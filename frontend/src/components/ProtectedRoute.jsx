@@ -51,11 +51,15 @@ const ProtectedRoute = ({ children, adminRequired = false }) => {
 		);
 	}
 
-	// If user is not logged in, redirect to login
+	// If user is not logged in, redirect to appropriate login
 	if (!user) {
 		console.log("ProtectedRoute: User not authenticated, redirecting to signin");
+		
+		// Determine which login page to redirect to based on the route
+		const loginPath = isAdminRoute ? "/admin-signin" : "/signin";
+		
 		// Use replace to prevent going back to protected routes via browser back button
-		return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
+		return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
 	}
 	
 	// For admin routes or routes that require admin, check if user has admin role

@@ -21,8 +21,12 @@ const AuthProvider = ({ children }) => {
 			
 			if (isProtectedPath && !user) {
 				console.log('Protected route accessed without authentication, redirecting to signin');
-				// Replace history state to prevent back button from returning to protected route
-				navigate('/signin', { replace: true });
+				// Check if it's an admin path and redirect to admin-signin instead
+				if (currentPath.startsWith('/admin')) {
+					navigate('/admin-signin', { replace: true });
+				} else {
+					navigate('/signin', { replace: true });
+				}
 			}
 		}
 	}, [location.pathname, user, loading, navigate]);
@@ -54,7 +58,10 @@ const AuthProvider = ({ children }) => {
 						
 						// Auto-redirect to appropriate dashboard on page refresh/load
 						const path = window.location.pathname;
-						if (path === '/signin' || path === '/signup' || path === '/') {
+						
+						// Special handling for login pages
+						if (path === '/signin' || path === '/signup' || path === '/' || 
+							path === '/admin-signin' || path === '/admin-signup') {
 							// Only redirect if user is on auth or home pages
 							if (userInfo.role === 'admin') {
 								navigate('/admin');
@@ -98,7 +105,12 @@ const AuthProvider = ({ children }) => {
 			if (protectedPaths.some(path => currentPath.startsWith(path))) {
 				// Replace the history entry to prevent back navigation to protected routes
 				console.log("Redirecting from protected route to signin");
-				navigate('/signin', { replace: true });
+				// Direct admin routes to admin login
+				if (currentPath.startsWith('/admin')) {
+					navigate('/admin-signin', { replace: true });
+				} else {
+					navigate('/signin', { replace: true });
+				}
 			}
 		};
 
@@ -140,16 +152,24 @@ const AuthProvider = ({ children }) => {
 			console.error("Logout error:", error);
 		}
 		
+		// Save the current path to determine which login page to navigate to after logout
+		const currentPath = location.pathname;
+		const isAdminPath = currentPath.startsWith('/admin');
+		
 		// Important: Clear auth before navigation
 		clearAuth();
 		
-		// Use replace instead of push to prevent back button from returning to protected routes
-		navigate('/signin', { replace: true });
+		// Navigate to the appropriate login page
+		if (isAdminPath) {
+			navigate('/admin-signin', { replace: true });
+		} else {
+			navigate('/signin', { replace: true });
+		}
 		
 		// Modified history manipulation to be less aggressive
 		if (window.history && window.history.pushState) {
 			// Only set a single pushState to clean the history
-			window.history.pushState(null, '', '/signin');
+			window.history.pushState(null, '', isAdminPath ? '/admin-signin' : '/signin');
 			
 			// Remove any existing onpopstate handler
 			window.onpopstate = null;
@@ -171,9 +191,12 @@ const AuthProvider = ({ children }) => {
 				data: { password }
 			});
 
+			// Determine if the user is an admin
+			const isAdmin = user.role === 'admin';
+			
 			// Clear authentication and redirect
 			clearAuth();
-			navigate('/signin', { replace: true });
+			navigate(isAdmin ? '/admin-signin' : '/signin', { replace: true });
 			
 			return { success: true, message: "Account deleted successfully" };
 		} catch (error) {
