@@ -93,7 +93,7 @@ The frontend will be accessible at http://localhost:5173.
 
 - Email: admin@gather.com
 - Password: admin123
-- Admin PIN: 1234
+- Admin PIN: 123456
 
 ## Default User Login
 
@@ -104,3 +104,4 @@ The frontend will be accessible at http://localhost:5173.
 
 - Backend API documentation is available at http://localhost:5001/api/test when the server is running.
 - The application uses SQLite for ease of development. No additional database setup is required.
+- If you encounter the error `address already in use` for port 5001, use the command `kill $(lsof -t -i:5001)` to free up the port.

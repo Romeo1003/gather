@@ -101,4 +101,14 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log("Press CTRL+C to stop the server");
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Please try the following:`);
+    console.error(`   1. Kill the process using: kill $(lsof -t -i:${PORT})`);
+    console.error(`   2. Or change the PORT value in your .env file`);
+    console.error(`   3. Or run: npm run dev -- --port=${PORT + 1}`);
+  } else {
+    console.error("❌ Server error:", err);
+  }
+  process.exit(1);
 });
