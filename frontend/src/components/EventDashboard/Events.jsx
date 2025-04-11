@@ -12,7 +12,6 @@ import {
   CardContent,
   CardActions,
   Button,
-  Fab,
   InputAdornment,
   Dialog,
   DialogTitle,
@@ -27,13 +26,13 @@ import {
   Search as SearchIcon,
   CalendarMonth as CalendarIcon,
   LocationOn as LocationIcon,
-  Add as AddIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   AccessTime as TimeIcon,
   People as PeopleIcon,
   Close as CloseIcon
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 const EventsPage = () => {
   const [status, setStatus] = useState("All Status");
@@ -42,6 +41,7 @@ const EventsPage = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [events, setEvents] = useState([]);
+  const navigate = useNavigate();
 
   // Sample events with Unsplash images
   const sampleEvents = [
@@ -173,12 +173,7 @@ const EventsPage = () => {
   };
 
   const handleView = (event) => {
-    setSelectedEvent(event);
-    setViewModalOpen(true);
-  };
-
-  const handleCreateNew = () => {
-    console.log("Create new event");
+    navigate(`/dashboard/event/${event.id}`);
   };
 
   const filteredEvents = events.filter((event) => {
@@ -217,25 +212,9 @@ const EventsPage = () => {
           position: "relative",
         }}
       >
-        {/* <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-          <Typography variant="h5" component="h1" fontWeight="bold">
-            Discover Events
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{
-              borderRadius: 8,
-              textTransform: "none",
-              px: 3,
-              py: 1,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={handleCreateNew}
-          >
-            Create Event
-          </Button>
-        </Box> */}
+        <Typography variant="h5" component="h1" fontWeight="bold" sx={{ mb: 3 }}>
+          Discover Events
+        </Typography>
 
         <Box
           sx={{
@@ -326,11 +305,13 @@ const EventsPage = () => {
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
+                    cursor: "pointer",
                     "&:hover": {
                       transform: "translateY(-4px)",
                       boxShadow: "0 12px 32px rgba(0, 0, 0, 0.12)",
                     }
                   }}
+                  onClick={() => handleView(event)}
                 >
                   <Box sx={{ position: "relative" }}>
                     <CardMedia
@@ -421,7 +402,10 @@ const EventsPage = () => {
                         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                         px: 3
                       }}
-                      onClick={() => handleView(event)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleView(event);
+                      }}
                     >
                       View Details
                     </Button>
@@ -447,11 +431,13 @@ const EventsPage = () => {
                   height: "100%",
                   display: "flex",
                   flexDirection: "column",
+                  cursor: "pointer",
                   "&:hover": {
                     transform: "translateY(-4px)",
                     boxShadow: "0 12px 32px rgba(0, 0, 0, 0.12)",
                   }
                 }}
+                onClick={() => handleView(event)}
               >
                 <Box sx={{ position: "relative" }}>
                   <CardMedia
@@ -530,7 +516,10 @@ const EventsPage = () => {
                         bgcolor: "rgba(0, 0, 0, 0.02)",
                       },
                     }}
-                    onClick={() => handleView(event)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(event);
+                    }}
                   >
                     Details
                   </Button>
@@ -539,22 +528,6 @@ const EventsPage = () => {
             </Grid>
           ))}
         </Grid>
-
-        {/* Floating Action Button for mobile */}
-        <Fab
-          color="primary"
-          aria-label="add"
-          sx={{
-            position: "fixed",
-            bottom: 32,
-            right: 32,
-            display: { xs: 'flex', md: 'none' },
-            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-          }}
-          onClick={handleCreateNew}
-        >
-          <AddIcon />
-        </Fab>
 
         {/* View Event Modal */}
         <Dialog

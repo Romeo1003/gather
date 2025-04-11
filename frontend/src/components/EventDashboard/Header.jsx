@@ -1,14 +1,41 @@
 // components/EventDashboard/Header.jsx
-import { Link } from "react-router-dom";
-import { Box, Typography, IconButton, Tooltip } from "@mui/material";
+import { Link, useNavigate } from "react-router-dom";
+import { Box, Typography, IconButton, Tooltip, Menu, MenuItem } from "@mui/material";
+import { useState, useContext } from "react";
+import { AuthContext } from "../../context/authContext";
 import {
 	CalendarMonth as CalendarIcon,
 	Person as PersonIcon,
 	ChevronLeft as ChevronLeftIcon,
 	Menu as MenuIcon,
+	Logout as LogoutIcon,
+	Settings as SettingsIcon
 } from "@mui/icons-material";
 
 const Header = ({ sidebarOpen, toggleSidebar }) => {
+	const { logout } = useContext(AuthContext);
+	const navigate = useNavigate();
+	const [anchorEl, setAnchorEl] = useState(null);
+	const open = Boolean(anchorEl);
+
+	const handleMenuClick = (event) => {
+		setAnchorEl(event.currentTarget);
+	};
+
+	const handleClose = () => {
+		setAnchorEl(null);
+	};
+
+	const handleLogout = () => {
+		handleClose();
+		logout();
+	};
+
+	const handleProfileClick = () => {
+		handleClose();
+		navigate("/profile");
+	};
+
 	return (
 		<Box
 			sx={{
@@ -46,18 +73,46 @@ const Header = ({ sidebarOpen, toggleSidebar }) => {
 						<CalendarIcon />
 					</IconButton>
 				</Tooltip>
-				<Tooltip title="Profile">
-					<Link to="/profile">
-						<IconButton
-							sx={{
-								bgcolor: "#f4f9ff",
-								"&:hover": { bgcolor: "#e6f2ff" },
-							}}
-						>
-							<PersonIcon />
-						</IconButton>
-					</Link>
+				<Tooltip title="Account">
+					<IconButton
+						aria-controls={open ? "account-menu" : undefined}
+						aria-haspopup="true"
+						aria-expanded={open ? "true" : undefined}
+						onClick={handleMenuClick}
+						sx={{
+							bgcolor: "#f4f9ff",
+							"&:hover": { bgcolor: "#e6f2ff" },
+						}}
+					>
+						<PersonIcon />
+					</IconButton>
 				</Tooltip>
+				<Menu
+					id="account-menu"
+					anchorEl={anchorEl}
+					open={open}
+					onClose={handleClose}
+					MenuListProps={{
+						'aria-labelledby': 'account-button',
+					}}
+					anchorOrigin={{
+						vertical: 'bottom',
+						horizontal: 'right',
+					}}
+					transformOrigin={{
+						vertical: 'top',
+						horizontal: 'right',
+					}}
+				>
+					<MenuItem onClick={handleProfileClick}>
+						<SettingsIcon fontSize="small" sx={{ mr: 1 }} />
+						Profile Settings
+					</MenuItem>
+					<MenuItem onClick={handleLogout}>
+						<LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+						Logout
+					</MenuItem>
+				</Menu>
 			</Box>
 		</Box>
 	);

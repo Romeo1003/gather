@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	Box,
 	Grid,
@@ -13,17 +13,19 @@ import {
 	Link,
 	Checkbox,
 	FormControlLabel,
+	Avatar,
+	Alert,
 } from "@mui/material";
-import { Visibility, VisibilityOff, Email, Lock } from "@mui/icons-material";
+import { Visibility, VisibilityOff, Email, Lock, AdminPanelSettings, Person } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import useAuth from "../hooks/useAuth";
 
 
-// Styled components (unchanged)
-const BlueSide = styled(Box)(({ theme }) => ({
-	backgroundColor: "#59BBF6",
+// Styled components - now with configurable colors
+const SideBanner = styled(Box)(({ theme, isAdmin }) => ({
+	backgroundColor: isAdmin ? "#673ab7" : "#59BBF6", // Purple for admin, Blue for users
 	height: "100vh",
 	position: "relative",
 	display: "flex",
@@ -64,23 +66,72 @@ const FormContainer = styled(Box)(() => ({
 	margin: "0 auto",
 }));
 
-const SignInPage = () => {
+const LoginButton = styled(Button)(({ isAdmin }) => ({
+	marginTop: 16,
+	marginBottom: 8,
+	padding: "12px 0",
+	backgroundColor: isAdmin ? "#673ab7" : "#1D9BF0", // Purple for admin, Blue for users
+	color: "white",
+	"&:hover": {
+		backgroundColor: isAdmin ? "#5e35b1" : "#0E87D3",
+	},
+}));
+
+const SignInPage = ({ userType = "customer" }) => {
+	const isAdmin = userType === "admin";
 	const [showPassword, setShowPassword] = useState(false);
+	const [showPin, setShowPin] = useState(false);
 	const [tabValue, setTabValue] = useState(1);
 	const [formData, setFormData] = useState({
 		email: "",
 		password: "",
+		adminPin: "",
 		rememberMe: false,
 	});
 	const [errors, setErrors] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [redirectMessage, setRedirectMessage] = useState("");
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { login } = useAuth();
 
+	// Check if user was redirected here due to session expiration
+	useEffect(() => {
+		// Clear any existing history manipulation handlers from logout
+		if (window.onpopstate) {
+			window.onpopstate = null;
+		}
+
+		// Check if we came from a protected route (via state or referrer)
+		const fromProtectedRoute = location.state?.from || document.referrer;
+		const protectedPaths = ['/dashboard', '/admin', '/profile', '/custdashboard'];
+		
+		const isProtectedRedirect = fromProtectedRoute && 
+			protectedPaths.some(path => 
+				typeof fromProtectedRoute === 'string' ? 
+					fromProtectedRoute.includes(path) : 
+					fromProtectedRoute.pathname?.includes(path)
+			);
+			
+		if (isProtectedRedirect) {
+			setRedirectMessage("Your session has expired or you have been logged out. Please sign in again.");
+		}
+		
+		// Check if there was an unauthorized access attempt
+		if (location.state?.unauthorized) {
+			setRedirectMessage("You don't have permission to access that area. Please log in with appropriate credentials.");
+		}
+	}, [location]);
+
 	const handleClickShowPassword = () => setShowPassword(!showPassword);
+	const handleClickShowPin = () => setShowPin(!showPin);
 
 	const handleTabChange = (_, newValue) => {
-		navigate(newValue === 0 ? "/signup" : "/signin");
+		if (isAdmin) {
+			navigate(newValue === 0 ? "/admin-signup" : "/admin-signin");
+		} else {
+			navigate(newValue === 0 ? "/signup" : "/signin");
+		}
 		setTabValue(newValue);
 	};
 
@@ -105,6 +156,12 @@ const SignInPage = () => {
 		if (!formData.password) {
 			newErrors.password = "Password is required";
 		}
+		
+		// Validate admin PIN if logging in as admin
+		if (isAdmin && !formData.adminPin) {
+			newErrors.adminPin = "Admin authentication PIN is required";
+		}
+		
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
@@ -115,23 +172,54 @@ const SignInPage = () => {
 
 		setIsSubmitting(true);
 		try {
+			// Create request data based on user type
+			const requestData = {
+				email: formData.email,
+				password: formData.password,
+			};
+			
+			// Add admin PIN for admin login
+			if (isAdmin) {
+				requestData.adminPin = formData.adminPin;
+			}
+			
 			const { data } = await axios.post(
-				"http://localhost:5000/api/auth/login",
-				{
-					email: formData.email,
-					password: formData.password,
-				},
+				"http://localhost:5001/api/auth/login",
+				requestData,
 				{ withCredentials: true } // Important for cookies
 			);
+
+			// Log the response to debug role information
+			console.log("Login response:", data);
 
 			// Store token in localStorage if "Remember me" is checked
 			if (formData.rememberMe) {
 				localStorage.setItem("token", data.token);
 			}
 
-			// Call login function from AuthContext
-			login(data.token);
+			// Verify user role before redirecting
+			const role = data.role || 'customer';
+			console.log(`User logged in with role: ${role}`);
+
+			// If admin login is expected but user role is not admin, show error
+			if (isAdmin && role !== 'admin') {
+				setErrors({
+					general: "This account doesn't have administrator privileges",
+				});
+				setIsSubmitting(false);
+				return;
+			}
+
+			// Call login function from AuthContext with user data
+			login(data.token, {
+				email: formData.email,
+				role: role
+			});
+
+			// The redirect is handled in the AuthContext login function 
+			// based on user role (admin → /admin, others → /dashboard/home)
 		} catch (error) {
+			console.error("Login error:", error);
 			const errorMessage = error.response?.data?.message || "Login failed";
 			setErrors({
 				general: errorMessage === "Invalid email or password."
@@ -151,7 +239,7 @@ const SignInPage = () => {
 		<Grid container sx={{ height: "100vh" }}>
 			{/* Left side with illustrations */}
 			<Grid item xs={12} md={6}>
-				<BlueSide>
+				<SideBanner isAdmin={isAdmin}>
 					{/* Floating shapes */}
 					<FloatingShape size={160} top="20%" left="20%" rotate={12} />
 					<FloatingShape size={80} top="30%" right="20%" rotate={-12} />
@@ -163,30 +251,75 @@ const SignInPage = () => {
 					{/* Content */}
 					<Box sx={{ position: "relative", zIndex: 1, mt: "auto" }}>
 						<Typography variant="h3" component="h1" color="white" fontWeight="bold">
-							Welcome to Our Platform
+							{isAdmin ? "Admin Portal" : "Welcome to Gather"}
 						</Typography>
 						<Typography variant="h6" color="white" sx={{ mt: 2, opacity: 0.9 }}>
-							Manage your events with ease and connect with attendees seamlessly.
+							{isAdmin 
+								? "Administrative access for event management and user control."
+								: "Manage your events with ease and connect with attendees seamlessly."
+							}
 						</Typography>
 					</Box>
-				</BlueSide>
+				</SideBanner>
 			</Grid>
 
 			{/* Right side with form */}
 			<Grid item xs={12} md={6}>
 				<FormSide>
 					<FormContainer>
+						{/* Login Type Indicator */}
+						<Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+							<Avatar 
+								sx={{ 
+									width: 60, 
+									height: 60, 
+									bgcolor: isAdmin ? '#673ab7' : '#1D9BF0',
+									mb: 1
+								}}
+							>
+								{isAdmin ? <AdminPanelSettings fontSize="large" /> : <Person fontSize="large" />}
+							</Avatar>
+						</Box>
+						
+						<Typography 
+							variant="h5" 
+							align="center" 
+							fontWeight="bold"
+							sx={{
+								color: isAdmin ? '#673ab7' : '#1D9BF0',
+								mb: 3
+							}}
+						>
+							{isAdmin ? "Administrator Login" : "User Login"}
+						</Typography>
+						
+						{redirectMessage && (
+							<Alert severity="info" sx={{ mb: 2 }}>
+								{redirectMessage}
+							</Alert>
+						)}
+
 						{/* Tabs */}
 						<Paper elevation={0} sx={{ mb: 4 }}>
 							<Tabs
 								value={tabValue}
 								onChange={handleTabChange}
 								variant="fullWidth"
-								indicatorColor="primary"
-								textColor="primary"
+								indicatorColor={isAdmin ? "secondary" : "primary"}
+								textColor={isAdmin ? "secondary" : "primary"}
 							>
-								<Tab label="Sign Up" />
-								<Tab label="Sign In" />
+								<Tab 
+									label={isAdmin ? "Admin Sign Up" : "Sign Up"} 
+									sx={{ 
+										color: isAdmin ? '#673ab7' : '#1D9BF0',
+									}}
+								/>
+								<Tab 
+									label={isAdmin ? "Admin Sign In" : "Sign In"} 
+									sx={{ 
+										color: isAdmin ? '#673ab7' : '#1D9BF0',
+									}}
+								/>
 							</Tabs>
 						</Paper>
 
@@ -255,8 +388,48 @@ const SignInPage = () => {
 										</InputAdornment>
 									),
 								}}
-								sx={{ mb: 2 }}
+								sx={{ mb: isAdmin ? 3 : 2 }}
 							/>
+
+							{/* Admin PIN field - only shown for admin login */}
+							{isAdmin && (
+								<>
+									<Typography variant="subtitle1" sx={{ mb: 1 }}>
+										Admin Authentication PIN
+									</Typography>
+									<TextField
+										required
+										fullWidth
+										name="adminPin"
+										type={showPin ? "text" : "password"}
+										id="adminPin"
+										placeholder="Enter administrator PIN"
+										value={formData.adminPin}
+										onChange={handleChange}
+										error={!!errors.adminPin}
+										helperText={errors.adminPin || "Required for admin access"}
+										InputProps={{
+											startAdornment: (
+												<InputAdornment position="start">
+													<AdminPanelSettings />
+												</InputAdornment>
+											),
+											endAdornment: (
+												<InputAdornment position="end">
+													<IconButton
+														aria-label="toggle pin visibility"
+														onClick={handleClickShowPin}
+														edge="end"
+													>
+														{showPin ? <VisibilityOff /> : <Visibility />}
+													</IconButton>
+												</InputAdornment>
+											),
+										}}
+										sx={{ mb: 2 }}
+									/>
+								</>
+							)}
 
 							<Box
 								sx={{
@@ -269,7 +442,7 @@ const SignInPage = () => {
 								<FormControlLabel
 									control={
 										<Checkbox
-											color="primary"
+											color={isAdmin ? "secondary" : "primary"}
 											name="rememberMe"
 											checked={formData.rememberMe}
 											onChange={handleChange}
@@ -284,39 +457,58 @@ const SignInPage = () => {
 										e.preventDefault();
 										navigate("/forgot-password");
 									}}
-									sx={{ color: "#1D9BF0" }}
+									sx={{ color: isAdmin ? "#673ab7" : "#1D9BF0" }}
 								>
 									Forgot password?
 								</Link>
 							</Box>
 
-							<Button
+							<LoginButton
 								type="submit"
 								fullWidth
 								variant="contained"
 								disabled={isSubmitting}
-								sx={{
-									mt: 2,
-									mb: 2,
-									py: 1.5,
-									backgroundColor: "#1D9BF0",
-									color: "white",
-									"&:hover": {
-										backgroundColor: "#0E87D3",
-									},
-								}}
+								isAdmin={isAdmin}
 							>
-								{isSubmitting ? "Signing in..." : "Sign In"}
-							</Button>
+								{isSubmitting ? "Signing in..." : `Sign In ${isAdmin ? 'as Admin' : ''}`}
+							</LoginButton>
+
+							{isAdmin && (
+								<Box sx={{ mt: 2, mb: 2 }}>
+									<Button
+										fullWidth
+										variant="outlined"
+										color="secondary"
+										onClick={() => navigate('/signin')}
+										sx={{ py: 1.5 }}
+									>
+										Switch to User Login
+									</Button>
+								</Box>
+							)}
+
+							{!isAdmin && (
+								<Box sx={{ mt: 2, mb: 2 }}>
+									<Button
+										fullWidth
+										variant="outlined"
+										color="primary"
+										onClick={() => navigate('/admin-signin')}
+										sx={{ py: 1.5 }}
+									>
+										Go to Admin Login
+									</Button>
+								</Box>
+							)}
 
 							<Box sx={{ textAlign: "center", mt: 3 }}>
 								<Typography variant="body2" color="text.secondary">
 									By continuing, you agree to our
-									<Link href="#" sx={{ color: "#1D9BF0", mx: 0.5 }}>
+									<Link href="#" sx={{ color: isAdmin ? "#673ab7" : "#1D9BF0", mx: 0.5 }}>
 										Terms of Service
 									</Link>
 									and
-									<Link href="#" sx={{ color: "#1D9BF0", ml: 0.5 }}>
+									<Link href="#" sx={{ color: isAdmin ? "#673ab7" : "#1D9BF0", ml: 0.5 }}>
 										Privacy Policy
 									</Link>
 								</Typography>

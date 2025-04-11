@@ -10,22 +10,24 @@ import {
   Tabs,
   Tab,
   Paper,
-  Link
+  Link,
+  Avatar
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   Person,
   Email,
-  Lock
+  Lock,
+  AdminPanelSettings
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// Same styled components as before...
-const BlueSide = styled(Box)(({ theme }) => ({
-  backgroundColor: '#59BBF6',
+// Styled components with color options
+const SideBanner = styled(Box)(({ theme, isAdmin }) => ({
+  backgroundColor: isAdmin ? '#673ab7' : '#59BBF6', // Purple for admin, Blue for users
   height: '100vh',
   position: 'relative',
   display: 'flex',
@@ -72,13 +74,27 @@ const FormContainer = styled(Box)(({ theme }) => ({
   margin: '0 auto',
 }));
 
-const SignupPage = () => {
+const SignupButton = styled(Button)(({ isAdmin }) => ({
+  marginTop: 16,
+  marginBottom: 8,
+  padding: '12px 0',
+  backgroundColor: isAdmin ? '#673ab7' : '#1D9BF0', // Purple for admin, Blue for users
+  color: 'white',
+  '&:hover': {
+    backgroundColor: isAdmin ? '#5e35b1' : '#0E87D3',
+  },
+}));
+
+const SignupPage = ({ userType = "customer" }) => {
+  const isAdmin = userType === "admin";
   const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: ''
+    password: '',
+    adminPin: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,17 +104,26 @@ const SignupPage = () => {
     setShowPassword(!showPassword);
   };
 
+  const handleClickShowPin = () => {
+    setShowPin(!showPin);
+  };
+
   const handleTabChange = (event, newValue) => {
-    if (newValue === 1) {
-      navigate('/signin');
+    if (isAdmin) {
+      navigate(newValue === 0 ? '/admin-signup' : '/admin-signin');
     } else {
-      setTabValue(newValue);
+      navigate(newValue === 0 ? '/signup' : '/signin');
     }
   };
 
-  const handleSignIn = (e) => {
+  const handleAdminLinkClick = (e) => {
     e.preventDefault();
-    navigate('/signin');
+    navigate('/admin-signup');
+  };
+
+  const handleUserLinkClick = (e) => {
+    e.preventDefault();
+    navigate('/signup');
   };
 
   const handleChange = (e) => {
@@ -129,6 +154,11 @@ const SignupPage = () => {
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
+    
+    // Validate admin PIN if user is signing up as admin
+    if (isAdmin && !formData.adminPin) {
+      newErrors.adminPin = 'Admin authentication PIN is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -136,23 +166,54 @@ const SignupPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submission started");
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      console.log("Form validation failed", errors);
+      return;
+    }
 
     setIsSubmitting(true);
+    console.log("Submitting form data:", formData);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signup', formData);
+      // Use the appropriate endpoint based on user type
+      const endpoint = isAdmin 
+        ? 'http://localhost:5001/api/auth/admin-signup'
+        : 'http://localhost:5001/api/auth/signup';
+  
+      console.log(`Sending request to: ${endpoint}`);
+      
+      // Add admin PIN if registering as admin instead of hardcoded admin code
+      const requestData = isAdmin 
+        ? { 
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            adminCode: formData.adminPin
+          }
+        : formData;
+        
+      const response = await axios.post(endpoint, requestData);
+      console.log("Signup response:", response);
 
       if (response.status === 201) {
+        console.log("Registration successful, saving token");
         // Store the token (you might want to use context or redux for global state)
         localStorage.setItem('token', response.data.token);
 
-        // Redirect to dashboard or home page
-        navigate('/');
+        // Redirect to appropriate dashboard
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard/home');
+        }
       }
     } catch (error) {
+      console.error("Signup error full details:", error);
+      
       if (error.response) {
+        console.error("Server response error:", error.response.data);
         // Handle backend validation errors
         if (error.response.data.errors) {
           const backendErrors = {};
@@ -162,11 +223,18 @@ const SignupPage = () => {
           setErrors(backendErrors);
         } else if (error.response.data.message === 'Email already in use.') {
           setErrors({ email: 'Email is already in use' });
+        } else if (error.response.data.message === 'Invalid admin code') {
+          setErrors({ adminCode: 'Invalid administrator code' });
         } else {
           console.error('Signup error:', error.response.data);
+          setErrors({ general: error.response.data.message || 'Registration failed' });
         }
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+        setErrors({ general: "No response from server. Please try again later." });
       } else {
         console.error('Signup error:', error.message);
+        setErrors({ general: error.message });
       }
     } finally {
       setIsSubmitting(false);
@@ -177,7 +245,7 @@ const SignupPage = () => {
     <Grid container sx={{ height: '100vh' }}>
       {/* Left side with illustrations */}
       <Grid item xs={12} md={6}>
-        <BlueSide>
+        <SideBanner isAdmin={isAdmin}>
           {/* Floating geometric shapes */}
           <FloatingShape size={160} top="20%" left="20%" rotate={12} />
           <FloatingShape size={80} top="30%" right="20%" rotate={-12} />
@@ -189,44 +257,90 @@ const SignupPage = () => {
           {/* Content */}
           <Box sx={{ position: 'relative', zIndex: 1, mt: 'auto' }}>
             <Typography variant="h3" component="h1" color="white" fontWeight="bold">
-              Create Your Account
+              {isAdmin ? "Admin Registration" : "Join Gather Today"}
             </Typography>
             <Typography variant="h6" color="white" sx={{ mt: 2, opacity: 0.9 }}>
-              Join our community and start organizing or attending amazing events.
+              {isAdmin 
+                ? "Register for administrative access to manage the platform."
+                : "Create your account and start managing events with ease."
+              }
             </Typography>
           </Box>
-        </BlueSide>
+        </SideBanner>
       </Grid>
 
       {/* Right side with form */}
       <Grid item xs={12} md={6}>
         <FormSide>
           <FormContainer>
-            {/* Tabs */}
+            {/* User Type Indicator with Icon */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <Avatar 
+                sx={{ 
+                  width: 60, 
+                  height: 60, 
+                  bgcolor: isAdmin ? '#673ab7' : '#1D9BF0',
+                  mb: 1
+                }}
+              >
+                {isAdmin ? <AdminPanelSettings fontSize="large" /> : <Person fontSize="large" />}
+              </Avatar>
+            </Box>
+            
+            <Typography 
+              variant="h5" 
+              align="center" 
+              fontWeight="bold"
+              sx={{
+                color: isAdmin ? '#673ab7' : '#1D9BF0',
+                mb: 3
+              }}
+            >
+              {isAdmin ? "Administrator Sign Up" : "User Sign Up"}
+            </Typography>
+            
+            {/* Tabs for Sign Up / Sign In */}
             <Paper elevation={0} sx={{ mb: 4 }}>
               <Tabs
                 value={tabValue}
                 onChange={handleTabChange}
                 variant="fullWidth"
-                indicatorColor="primary"
-                textColor="primary"
+                indicatorColor={isAdmin ? "secondary" : "primary"}
+                textColor={isAdmin ? "secondary" : "primary"}
               >
-                <Tab label="Sign Up" />
-                <Tab label="Sign In" />
+                <Tab 
+                  label={isAdmin ? "Admin Sign Up" : "Sign Up"} 
+                  sx={{ 
+                    color: isAdmin ? '#673ab7' : '#1D9BF0',
+                  }}
+                />
+                <Tab 
+                  label={isAdmin ? "Admin Sign In" : "Sign In"} 
+                  sx={{ 
+                    color: isAdmin ? '#673ab7' : '#1D9BF0',
+                  }}
+                />
               </Tabs>
             </Paper>
 
-            {/* Form fields */}
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            {/* Form Fields */}
+            <Box component="form" onSubmit={handleSubmit}>
+              {errors.general && (
+                <Typography color="error" sx={{ mb: 2 }}>
+                  {errors.general}
+                </Typography>
+              )}
+
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Full Name
+              </Typography>
               <TextField
-                margin="normal"
                 required
                 fullWidth
                 id="name"
-                label="Full name"
                 name="name"
-                autoComplete="name"
                 placeholder="Enter your full name"
+                autoComplete="name"
                 value={formData.name}
                 onChange={handleChange}
                 error={!!errors.name}
@@ -238,17 +352,19 @@ const SignupPage = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 2 }}
+                sx={{ mb: 3 }}
               />
+
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Email address
+              </Typography>
               <TextField
-                margin="normal"
                 required
                 fullWidth
                 id="email"
-                label="Email address"
                 name="email"
-                autoComplete="email"
                 placeholder="Enter your email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
                 error={!!errors.email}
@@ -260,18 +376,20 @@ const SignupPage = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 2 }}
+                sx={{ mb: 3 }}
               />
+
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Password
+              </Typography>
               <TextField
-                margin="normal"
                 required
                 fullWidth
                 name="password"
-                label="Password"
                 type={showPassword ? 'text' : 'password'}
                 id="password"
+                placeholder="Choose a password"
                 autoComplete="new-password"
-                placeholder="Create a password"
                 value={formData.password}
                 onChange={handleChange}
                 error={!!errors.password}
@@ -294,37 +412,96 @@ const SignupPage = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 3 }}
+                sx={{ mb: isAdmin ? 3 : 4 }}
               />
 
-              <Button
+              {/* Admin PIN field - only shown for admin signup */}
+              {isAdmin && (
+                <>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                    Admin Authentication PIN
+                  </Typography>
+                  <TextField
+                    required
+                    fullWidth
+                    name="adminPin"
+                    type={showPin ? 'text' : 'password'}
+                    id="adminPin"
+                    placeholder="Enter administrator PIN"
+                    value={formData.adminPin}
+                    onChange={handleChange}
+                    error={!!errors.adminPin}
+                    helperText={errors.adminPin || "Secure PIN required for admin access"}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AdminPanelSettings />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle pin visibility"
+                            onClick={handleClickShowPin}
+                            edge="end"
+                          >
+                            {showPin ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ mb: 4 }}
+                  />
+                </>
+              )}
+
+              <SignupButton
                 type="submit"
                 fullWidth
                 variant="contained"
                 disabled={isSubmitting}
-                sx={{
-                  mt: 2,
-                  mb: 2,
-                  py: 1.5,
-                  backgroundColor: '#1D9BF0',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#0E87D3',
-                  }
-                }}
+                isAdmin={isAdmin}
               >
-                {isSubmitting ? 'Creating account...' : 'Create account'}
-              </Button>
+                {isSubmitting ? 'Creating account...' : `Create ${isAdmin ? 'Admin ' : ''}Account`}
+              </SignupButton>
 
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Already have an account?{' '}
-                  <Link
-                    href="#"
-                    onClick={handleSignIn}
-                    sx={{ color: '#1D9BF0' }}
+              {isAdmin && (
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleUserLinkClick}
+                    sx={{ py: 1.5 }}
                   >
-                    Sign In
+                    Switch to User Sign Up
+                  </Button>
+                </Box>
+              )}
+
+              {!isAdmin && (
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleAdminLinkClick}
+                    sx={{ py: 1.5 }}
+                  >
+                    Go to Admin Sign Up
+                  </Button>
+                </Box>
+              )}
+
+              <Box sx={{ textAlign: 'center', mt: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  By continuing, you agree to our
+                  <Link href="#" sx={{ color: isAdmin ? "#673ab7" : "#1D9BF0", mx: 0.5 }}>
+                    Terms of Service
+                  </Link>
+                  and
+                  <Link href="#" sx={{ color: isAdmin ? "#673ab7" : "#1D9BF0", ml: 0.5 }}>
+                    Privacy Policy
                   </Link>
                 </Typography>
               </Box>

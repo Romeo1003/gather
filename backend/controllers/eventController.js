@@ -43,79 +43,36 @@ export const upload = multer({
   limits: { fileSize: 1024 * 1024 * 5 }, // 5MB limit
 });
 
-
-
-
-
-
-
 // Create Event
-// export const createEvent = async (req, res) => {
-//   try {
-//     console.log("Request body:", req.body);
-//     console.log("Uploaded file:", req.file);
-
-//     const { title, description, startDate, endDate, time, location, price } = req.body;
-
-//     // Validate dates
-//     if (new Date(startDate) >= new Date(endDate)) {
-//       return res.status(400).json({ message: "End date must be after start date" });
-//     }
-
-//     const eventData = {
-//       title,
-//       description,
-//       startDate,
-//       endDate,
-//       time,
-//       location,
-//       price: price || 0,
-//     };
-
-//     if (req.file) {
-//       console.log("File saved at:", req.file.path);
-//       eventData.image = `/user_uploads/${req.file.filename}`;
-//     }
-
-//     const event = await Event.create(eventData);
-//     res.status(201).json(event);
-//   } catch (error) {
-//     console.error("Create Event Error:", error);
-
-//     // If file was uploaded but an error occurred, delete it
-//     if (req.file) {
-//       try {
-//         await fs.unlink(req.file.path);
-//       } catch (err) {
-//         console.error("Error deleting file:", err);
-//       }
-//     }
-
-//     res.status(500).json({
-//       message: "Something went wrong",
-//       error: error.message
-//     });
-//   }
-// };
-
-
-
-
-
-
-
 export const createEvent = async (req, res) => {
   try {
     console.log("Request body:", req.body);
     console.log("Uploaded file:", req.file);
 
-    const { title, description, startDate, endDate, time, location, price } = req.body;
+    const { 
+      title, 
+      description, 
+      startDate, 
+      endDate, 
+      time, 
+      location, 
+      price, 
+      capacity,
+      requiredServices,
+      status,
+      organizerEmail
+    } = req.body;
 
     // Validate dates
     if (new Date(startDate) >= new Date(endDate)) {
       return res.status(400).json({ message: "End date must be after start date" });
     }
 
+    // Get user information from the request
+    const userEmail = req.user?.email || organizerEmail;
+    const userRole = req.user?.role || 'customer';
+
+    // Initialize event data
     const eventData = {
       title,
       description,
@@ -124,18 +81,63 @@ export const createEvent = async (req, res) => {
       time,
       location,
       price: price || 0,
+      capacity: capacity || null,
+      availableCapacity: capacity || null,
+      organizerEmail: userEmail,
     };
 
+    // Handle required services if provided
+    if (requiredServices) {
+      try {
+        eventData.requiredServices = typeof requiredServices === 'string' 
+          ? JSON.parse(requiredServices) 
+          : requiredServices;
+      } catch (e) {
+        console.error("Error parsing required services:", e);
+        // If parsing fails, set to empty array
+        eventData.requiredServices = [];
+      }
+    }
+
+    // Set approval status based on user role
+    // Admins can create pre-approved events, users' events need approval
+    eventData.status = userRole === 'admin' 
+      ? (status || 'published') // Admins can directly publish events
+      : 'draft'; // Regular users' events start as drafts
+
+    // Handle image upload
     if (req.file) {
       console.log("File saved at:", req.file.path);
       eventData.image = `${req.protocol}://${req.get("host")}/user_uploads/${req.file.filename}`;
     }
 
+    // Create the event in the database
     const event = await Event.create(eventData);
-    res.status(201).json(event);
+
+    // Create notification if user is not admin
+    if (userRole !== 'admin') {
+      try {
+        // Create a notification for admins about the new event
+        // This assumes you have a notification model/system
+        console.log("Creating notification for new event:", event.id);
+        // Implement your notification logic here
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Continue even if notification fails
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: userRole === 'admin' 
+        ? "Event created successfully" 
+        : "Event created and pending approval",
+      event
+    });
   } catch (error) {
     console.error("Create Event Error:", error);
 
+    // If file was uploaded but an error occurred, delete it
     if (req.file) {
       try {
         await fs.unlink(req.file.path);
@@ -150,27 +152,6 @@ export const createEvent = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Get All Events
 export const getAllEvents = async (req, res) => {

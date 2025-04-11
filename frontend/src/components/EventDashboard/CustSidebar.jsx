@@ -143,6 +143,13 @@ const Sidebar = ({ sidebarOpen }) => {
           sidebarOpen={sidebarOpen}
           selected={location.pathname === "/custdashboard/events"}
         />
+        <SidebarItem
+          icon={<AddIcon />}
+          text="Create Event"
+          to="/dashboard/create-event"
+          sidebarOpen={sidebarOpen}
+          selected={location.pathname === "/dashboard/create-event"}
+        />
       </List>
     </Box>
   );

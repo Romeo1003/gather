@@ -57,6 +57,43 @@ const Events = sequelize.define(
       allowNull: false,
       field: "location",
     },
+    venueId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "venue_id",
+    },
+    capacity: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "capacity",
+    },
+    availableCapacity: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "available_capacity",
+    },
+    status: {
+      type: DataTypes.ENUM('draft', 'published', 'cancelled'),
+      defaultValue: 'draft',
+      field: "status",
+    },
+    requiredServices: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: "required_services",
+      get() {
+        const rawValue = this.getDataValue('requiredServices');
+        return rawValue ? JSON.parse(rawValue) : [];
+      },
+      set(value) {
+        this.setDataValue('requiredServices', JSON.stringify(value));
+      }
+    },
+    organizerEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: "organizer_email",
+    },
   },
   {
     timestamps: true,

@@ -7,22 +7,25 @@ import {
   deleteEvent,
   upload,
 } from "../controllers/eventController.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Create event with file upload
-router.post("/", upload.single("banner"), createEvent);
-
+// Public routes
 // Get all events
 router.get("/", getAllEvents);
 
 // Get single event
 router.get("/:id", getEventById);
 
-// Update event with optional file upload
-router.put("/:id", upload.single("banner"), updateEvent);
+// Protected routes
+// Create event with file upload (requires authentication)
+router.post("/", verifyToken, upload.single("banner"), createEvent);
 
-// Delete event
-router.delete("/:id", deleteEvent);
+// Update event with optional file upload (requires authentication)
+router.put("/:id", verifyToken, upload.single("banner"), updateEvent);
+
+// Delete event (requires authentication)
+router.delete("/:id", verifyToken, deleteEvent);
 
 export default router;

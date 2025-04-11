@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { AuthContext } from '../context/authContext';
 import { 
   Box, 
   Typography, 
@@ -13,7 +14,15 @@ import {
   IconButton,
   Container,
   Tooltip,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
@@ -23,10 +32,15 @@ import {
   Person as PersonIcon,
   ListAlt as ListAltIcon,
   Add as AddIcon,
-  ConfirmationNumber as TicketIcon
+  ConfirmationNumber as TicketIcon,
+  Delete as DeleteIcon,
+  Logout as LogoutIcon
 } from '@mui/icons-material';
 
 const ProfileSettings = () => {
+  // Get auth context
+  const { user, logout, deleteAccount } = useContext(AuthContext);
+  
   // State for sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const toggleSidebar = () => {
@@ -40,8 +54,20 @@ const ProfileSettings = () => {
   const [emailUpdates, setEmailUpdates] = useState(false);
 
   const [fullName, setFullName] = useState('User Name');
-  const [email, setEmail] = useState('user@example.com');
+  const [email, setEmail] = useState(user?.email || 'user@example.com');
   const [joinDate, setJoinDate] = useState('January 2024');
+
+  // Delete account dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  // Snackbar for notifications
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Sidebar width calculations
   const sidebarWidth = 240;
@@ -66,26 +92,67 @@ const ProfileSettings = () => {
     const confirmPassword = prompt('Confirm new password');
 
     if (newPassword && confirmPassword && newPassword === confirmPassword) {
-      alert('Password changed successfully');
+      setSnackbar({
+        open: true,
+        message: 'Password changed successfully',
+        severity: 'success'
+      });
     } else {
-      alert('Password change failed. Please try again.');
+      setSnackbar({
+        open: true,
+        message: 'Password change failed. Please try again.',
+        severity: 'error'
+      });
     }
   };
 
-  const handleDeleteAccount = () => {
-    const confirmDelete = window.confirm('Are you sure you want to delete your account? This action cannot be undone.');
-    if (confirmDelete) {
-      // Implement account deletion logic
-      alert('Account deletion functionality to be implemented');
+  const handleOpenDeleteDialog = () => {
+    setDeleteDialogOpen(true);
+    setConfirmPassword('');
+    setPasswordError('');
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirmPassword) {
+      setPasswordError('Please enter your password to confirm deletion');
+      return;
+    }
+
+    try {
+      const result = await deleteAccount(confirmPassword);
+      
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: 'Account deleted successfully',
+          severity: 'success'
+        });
+        handleCloseDeleteDialog();
+      } else {
+        setPasswordError(result.message);
+      }
+    } catch (error) {
+      setPasswordError('An error occurred. Please try again.');
+      console.error(error);
     }
   };
 
   const handleLogout = () => {
-    // Implement logout logic
     const confirmLogout = window.confirm('Are you sure you want to log out?');
     if (confirmLogout) {
-      alert('Logout functionality to be implemented');
+      logout();
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({
+      ...snackbar,
+      open: false
+    });
   };
 
   return (
@@ -189,49 +256,6 @@ const ProfileSettings = () => {
                 </Typography>
               )}
             </Box>
-            {/* <Box 
-              sx={{ 
-                borderRadius: '8px', 
-                mb: 0.5,
-                '&:hover': { bgcolor: '#f5f8fa' },
-                px: 1.5,
-                py: 1,
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <AddIcon sx={{ 
-                mr: sidebarOpen ? 1 : 0, 
-                fontSize: '1.2rem'
-              }} />
-              {sidebarOpen && (
-                <Typography>
-                  Edit Profile
-                </Typography>
-              )}
-            </Box>
-            <Box 
-              sx={{ 
-                borderRadius: '8px', 
-                '&:hover': { bgcolor: '#f5f8fa' },
-                px: 1.5,
-                py: 1,
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <TicketIcon sx={{ 
-                mr: sidebarOpen ? 1 : 0, 
-                fontSize: '1.2rem'
-              }} />
-              {sidebarOpen && (
-                <Typography>
-                  Account Settings
-                </Typography>
-              )}
-            </Box> */}
           </Box>
         </Box>
 
@@ -247,269 +271,221 @@ const ProfileSettings = () => {
             Profile Settings
           </Typography>
 
-          <Card 
-            sx={{
-              borderRadius: 4,
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
-              p: 3
-            }}
-          >
-            {/* Profile Header */}
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              mb: 3 
-            }}>
-              <Box sx={{ position: 'relative', mb: 2 }}>
-                <Avatar 
-                  sx={{ 
-                    width: 100, 
-                    height: 100, 
-                    bgcolor: 'primary.main',
-                    fontSize: '2.5rem' 
-                  }}
-                >
-                  {fullName.charAt(0).toUpperCase()}
-                </Avatar>
-              </Box>
-              <Typography variant="h6" fontWeight="bold">{fullName}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Member since {joinDate}
-              </Typography>
-            </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Personal Information */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+          <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" component="h3">
                 Personal Information
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    bgcolor: '#f4f6f8',
-                    p: 2,
-                    borderRadius: 2
-                  }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Full Name</Typography>
-                      <Typography variant="body1">{fullName}</Typography>
-                    </Box>
-                    <IconButton onClick={handleEditFullName}>
-                      <EditIcon />
-                    </IconButton>
-                  </Box>
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    bgcolor: '#f4f6f8',
-                    p: 2,
-                    borderRadius: 2
-                  }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Email</Typography>
-                      <Typography variant="body1">{email}</Typography>
-                    </Box>
-                    <IconButton onClick={handleEditEmail}>
-                      <EditIcon />
-                    </IconButton>
-                  </Box>
-                </Grid>
-              </Grid>
             </Box>
 
-            {/* Security Settings */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-                Security Settings
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Full Name
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Typography variant="body1">
+                    {fullName}
+                  </Typography>
+                  <IconButton size="small" onClick={handleEditFullName} sx={{ ml: 1 }}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Email Address
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Typography variant="body1">
+                    {email}
+                  </Typography>
+                  <IconButton size="small" onClick={handleEditEmail} sx={{ ml: 1 }}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Member Since
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  {joinDate}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Card>
+
+          <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" component="h3">
+                Account Settings
               </Typography>
+            </Box>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Profile Visibility
+                </Typography>
+                <FormControl fullWidth variant="outlined" size="small" sx={{ mt: 1 }}>
+                  <Select
+                    value={profileVisibility}
+                    onChange={(e) => setProfileVisibility(e.target.value)}
+                  >
+                    <MenuItem value="Public">Public</MenuItem>
+                    <MenuItem value="Private">Private</MenuItem>
+                    <MenuItem value="Friends">Friends Only</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Data Sharing
+                </Typography>
+                <FormControl fullWidth variant="outlined" size="small" sx={{ mt: 1 }}>
+                  <Select
+                    value={dataSharing}
+                    onChange={(e) => setDataSharing(e.target.value)}
+                  >
+                    <MenuItem value="Allow">Allow All</MenuItem>
+                    <MenuItem value="Restrict">Restrict</MenuItem>
+                    <MenuItem value="Minimal">Minimal</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Push Notifications
+                  </Typography>
+                  <Switch 
+                    checked={pushNotifications} 
+                    onChange={(e) => setPushNotifications(e.target.checked)} 
+                  />
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Email Updates
+                  </Typography>
+                  <Switch 
+                    checked={emailUpdates} 
+                    onChange={(e) => setEmailUpdates(e.target.checked)} 
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          </Card>
+
+          <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" component="h3">
+                Security
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
               <Button 
-                variant="contained" 
-                color="primary"
-                fullWidth
+                variant="outlined" 
                 onClick={handleChangePassword}
-                sx={{ 
-                  borderRadius: 2, 
-                  py: 1.5,
-                  boxShadow: '0 4px 14px rgba(25, 118, 210, 0.3)',
-                  '&:hover': {
-                    boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-                  }
-                }}
+                sx={{ mr: 2 }}
               >
                 Change Password
               </Button>
             </Box>
+          </Card>
 
-            {/* Notification Preferences */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-                Notification Preferences
+          <Card sx={{ p: 3, borderRadius: 2, bgcolor: '#fff8f8' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" component="h3" color="error.main">
+                Danger Zone
               </Typography>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                bgcolor: '#f4f6f8',
-                p: 2,
-                borderRadius: 2,
-                mb: 2
-              }}>
-                <Box>
-                  <Typography variant="body1">Push Notifications</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Receive notifications about important updates
-                  </Typography>
-                </Box>
-                <Switch 
-                  checked={pushNotifications}
-                  onChange={() => setPushNotifications(!pushNotifications)}
-                />
-              </Box>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                bgcolor: '#f4f6f8',
-                p: 2,
-                borderRadius: 2
-              }}>
-                <Box>
-                  <Typography variant="body1">Email Updates</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Receive email notifications about account activity
-                  </Typography>
-                </Box>
-                <Switch 
-                  checked={emailUpdates}
-                  onChange={() => setEmailUpdates(!emailUpdates)}
-                />
-              </Box>
             </Box>
-
-            {/* Privacy Settings */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-                Privacy Settings
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    bgcolor: '#f4f6f8',
-                    p: 2,
-                    borderRadius: 2
-                  }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Profile Visibility</Typography>
-                      <FormControl fullWidth variant="standard" sx={{ mt: 1 }}>
-                        <Select
-                          value={profileVisibility}
-                          onChange={(e) => setProfileVisibility(e.target.value)}
-                          sx={{ 
-                            '&:before': {
-                              borderBottom: 'none'
-                            },
-                            '&:after': {
-                              borderBottom: 'none'
-                            }
-                          }}
-                        >
-                          <MenuItem value="Public">Public</MenuItem>
-                          <MenuItem value="Private">Private</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    bgcolor: '#f4f6f8',
-                    p: 2,
-                    borderRadius: 2
-                  }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Data Sharing</Typography>
-                      <FormControl fullWidth variant="standard" sx={{ mt: 1 }}>
-                        <Select
-                          value={dataSharing}
-                          onChange={(e) => setDataSharing(e.target.value)}
-                          sx={{ 
-                            '&:before': {
-                              borderBottom: 'none'
-                            },
-                            '&:after': {
-                              borderBottom: 'none'
-                            }
-                          }}
-                        >
-                          <MenuItem value="Allow All">Allow All</MenuItem>
-                          <MenuItem value="Restrict">Restrict</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Action Buttons */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              gap: 2 
-            }}>
+            
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <Button 
-                variant="contained" 
+                variant="outlined" 
                 color="error"
-                fullWidth
-                onClick={handleDeleteAccount}
-                sx={{ 
-                  borderRadius: 2, 
-                  py: 1.5,
-                  boxShadow: '0 4px 14px rgba(211, 47, 47, 0.3)',
-                  '&:hover': {
-                    boxShadow: '0 6px 20px rgba(211, 47, 47, 0.4)',
-                  }
-                }}
+                startIcon={<LogoutIcon />}
+                onClick={handleLogout}
               >
-                Delete Account
+                Logout
               </Button>
               
               <Button 
                 variant="contained" 
-                color="primary"
-                fullWidth
-                onClick={handleLogout}
-                sx={{ 
-                  borderRadius: 2, 
-                  py: 1.5,
-                  boxShadow: '0 4px 14px rgba(25, 118, 210, 0.3)',
-                  '&:hover': {
-                    boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-                  }
-                }}
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleOpenDeleteDialog}
               >
-                
-                Logout
+                Delete Account
               </Button>
             </Box>
           </Card>
         </Box>
       </Box>
+
+      {/* Delete Account Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title" color="error">
+          Delete Your Account
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description" sx={{ mb: 3 }}>
+            Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="password"
+            label="Confirm your password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            error={!!passwordError}
+            helperText={passwordError}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteAccount} color="error" variant="contained">
+            Delete My Account
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

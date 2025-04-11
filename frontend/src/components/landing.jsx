@@ -174,14 +174,14 @@ const LandingPage = () => {
                 Create, manage, and track events with our intuitive platform.
                 From registration to analytics, we've got you covered.
               </Typography>
-              <Box sx={{ display: "flex", gap: 2 }}>
+              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                 <Button
                   variant="contained"
                   color="primary"
                   size="large"
                   endIcon={<ArrowForwardIcon />}
                   component={Link}
-                  to="/dashboard"
+                  to="/signin"
                   sx={{
                     borderRadius: 28,
                     px: 4,
@@ -194,14 +194,14 @@ const LandingPage = () => {
                     },
                   }}
                 >
-                  Get Started
+                  User Login
                 </Button>
                 <Button
                   variant="outlined"
                   color="primary"
                   size="large"
                   component={Link}
-                  to="/demo"
+                  to="/signup"
                   sx={{
                     borderRadius: 28,
                     px: 4,
@@ -214,24 +214,61 @@ const LandingPage = () => {
                     },
                   }}
                 >
-                  View Demo
+                  Sign Up
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="large"
+                  component={Link}
+                  to="/admin-signin"
+                  sx={{
+                    borderRadius: 28,
+                    px: 4,
+                    py: 1.5,
+                    fontSize: "1rem",
+                    fontWeight: "medium",
+                    bgcolor: "#673ab7",
+                    boxShadow: "0 4px 14px rgba(103, 58, 183, 0.3)",
+                    "&:hover": {
+                      bgcolor: "#5e35b1",
+                      boxShadow: "0 6px 20px rgba(103, 58, 183, 0.4)",
+                    },
+                    position: "relative"
+                  }}
+                >
+                  Admin Portal
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      position: "absolute",
+                      bottom: "-20px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      whiteSpace: "nowrap",
+                      color: "#673ab7",
+                      fontWeight: "bold",
+                      fontSize: "0.7rem"
+                    }}
+                  >
+                    Requires Authentication PIN
+                  </Typography>
                 </Button>
               </Box>
             </Grid>
             <Grid item xs={12} md={6}>
-            <Box
+              <Box
                 component="img"
                 src="https://plus.unsplash.com/premium_photo-1661414423895-5854eb6b573a?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" // Test image
                 alt="Event Management Dashboard"
                 sx={{
-                width: "100%",
-                borderRadius: 4,
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)",
-                transform: "perspective(1500px) rotateY(-10deg) rotateX(5deg)",
+                  width: "100%",
+                  borderRadius: 4,
+                  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)",
+                  transform: "perspective(1500px) rotateY(-10deg) rotateX(5deg)",
                 }}
-            />
+              />
             </Grid>
-
           </Grid>
         </Container>
       </Box>

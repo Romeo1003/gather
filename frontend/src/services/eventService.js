@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: "http://localhost:5000/api/events", // Adjust this to your backend URL
+  baseURL: "http://localhost:5001/api/events", // Adjust this to your backend URL
   headers: {
     "Content-Type": "application/json",
   },
@@ -24,7 +24,7 @@ export const createEvent = async (eventData) => {
     formData.append("banner", eventData.banner);
   }
 
-  const response = await axios.post("http://localhost:5000/api/events", formData, {
+  const response = await axios.post("http://localhost:5001/api/events", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

@@ -11,9 +11,15 @@ import {
 	CardActions,
 } from "@mui/material";
 import { Add as AddIcon, Edit as EditIcon } from "@mui/icons-material";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const UpcomingEvents = ({ cardStyle, events }) => {
+	const navigate = useNavigate();
+
+	const handleEventClick = (eventId) => {
+		navigate(`/dashboard/event/${eventId}`);
+	};
+
 	return (
 		<Box sx={{ mb: 4 }}>
 			<Box
@@ -29,29 +35,9 @@ const UpcomingEvents = ({ cardStyle, events }) => {
 				<Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: { xs: 1, sm: 0 } }}>
 					Upcoming Events
 				</Typography>
-				<Button
-					variant="contained"
-					color="primary"
-					startIcon={<AddIcon />}
-					sx={{
-						borderRadius: 28,
-						px: 3,
-						py: 0.75,
-						boxShadow: "0 4px 14px rgba(25, 118, 210, 0.3)",
-						"&:hover": {
-							boxShadow: "0 6px 20px rgba(25, 118, 210, 0.4)",
-						},
-						width: { xs: "100%", sm: "auto" },
-					}}
-				>
-					<Link
-						to="/dashboard/edit-event"
-						style={{ color: "white", textDecoration: "none" }}
-					>
-						Create New Event
-					</Link>
-				</Button>
 			</Box>
+
+			{/* Event Cards */}
 			<Grid container spacing={2}>
 				{events.map((event) => (
 					<Grid item xs={12} sm={6} lg={4} key={event.id}>
@@ -62,7 +48,13 @@ const UpcomingEvents = ({ cardStyle, events }) => {
 								height: "100%",
 								display: "flex",
 								flexDirection: "column",
+								cursor: "pointer",
+								'&:hover': {
+									boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+									transform: 'translateY(-4px)'
+								}
 							}}
+							onClick={() => handleEventClick(event.id)}
 						>
 							<CardMedia
 								component="img"
@@ -117,14 +109,36 @@ const UpcomingEvents = ({ cardStyle, events }) => {
 									p: { xs: 1, sm: 1.5 },
 									borderTop: "1px solid rgba(0, 0, 0, 0.05)",
 									display: "flex",
-									justifyContent: "flex-end",
+									justifyContent: "space-between",
 									bgcolor: "rgba(0, 0, 0, 0.01)",
 								}}
 							>
 								<Button
 									color="primary"
 									size="small"
+									onClick={(e) => {
+										e.stopPropagation(); // Prevent card click
+										navigate(`/dashboard/event/${event.id}`);
+									}}
+									sx={{
+										fontWeight: "medium",
+										borderRadius: 8,
+										"&:hover": {
+											bgcolor: "rgba(25, 118, 210, 0.08)",
+										},
+										fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+									}}
+								>
+									View Details
+								</Button>
+								<Button
+									color="primary"
+									size="small"
 									startIcon={<EditIcon fontSize="small" />}
+									onClick={(e) => {
+										e.stopPropagation(); // Prevent card click
+										navigate(`/dashboard/edit-event/${event.id}`);
+									}}
 									sx={{
 										fontWeight: "medium",
 										borderRadius: 8,
