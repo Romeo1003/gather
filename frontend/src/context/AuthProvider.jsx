@@ -14,7 +14,7 @@ const AuthProvider = ({ children }) => {
 		// Skip on initial load as verifyAuth will handle redirects
 		if (!loading) {
 			const currentPath = location.pathname;
-			const protectedPaths = ['/dashboard', '/admin', '/profile'];
+			const protectedPaths = ['/dashboard', '/admin', '/profile', '/custdashboard'];
 			
 			// Check if current path is protected and user is not authenticated
 			const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
@@ -48,6 +48,8 @@ const AuthProvider = ({ children }) => {
 							email: response.data.user.email,
 							role: response.data.user.role || 'customer' // Default to customer if role not provided
 						};
+						
+						console.log("Auth verification successful:", userInfo);
 						setUser(userInfo);
 						
 						// Auto-redirect to appropriate dashboard on page refresh/load
@@ -59,7 +61,8 @@ const AuthProvider = ({ children }) => {
 							} else {
 								navigate('/dashboard/home');
 							}
-						} else if (userInfo.role === 'admin' && !path.startsWith('/admin')) {
+						} else if (userInfo.role === 'admin' && !path.startsWith('/admin') && 
+								   path !== '/profile') { // Allow admins to access their profile
 							// If admin is on a non-admin page, redirect to admin dashboard
 							navigate('/admin');
 						} else if (userInfo.role !== 'admin' && path.startsWith('/admin')) {
@@ -67,11 +70,13 @@ const AuthProvider = ({ children }) => {
 							navigate('/dashboard/home');
 						}
 					} else {
+						console.log("Token verification failed");
 						clearAuth();
 						// If token is invalid and user is on a protected route, redirect to login
 						handleProtectedRouteRedirect();
 					}
 				} else {
+					console.log("No authentication token found");
 					// No token, check if on protected route
 					handleProtectedRouteRedirect();
 				}
@@ -88,10 +93,11 @@ const AuthProvider = ({ children }) => {
 		// Helper function to check if current path requires auth
 		const handleProtectedRouteRedirect = () => {
 			const currentPath = window.location.pathname;
-			const protectedPaths = ['/dashboard', '/admin', '/profile'];
+			const protectedPaths = ['/dashboard', '/admin', '/profile', '/custdashboard'];
 			
 			if (protectedPaths.some(path => currentPath.startsWith(path))) {
 				// Replace the history entry to prevent back navigation to protected routes
+				console.log("Redirecting from protected route to signin");
 				navigate('/signin', { replace: true });
 			}
 		};
@@ -133,16 +139,20 @@ const AuthProvider = ({ children }) => {
 		} catch (error) {
 			console.error("Logout error:", error);
 		}
+		
+		// Important: Clear auth before navigation
 		clearAuth();
+		
 		// Use replace instead of push to prevent back button from returning to protected routes
 		navigate('/signin', { replace: true });
 		
-		// Clear browser history state to prevent back navigation to authenticated routes
+		// Modified history manipulation to be less aggressive
 		if (window.history && window.history.pushState) {
-			window.history.pushState(null, null, window.location.pathname);
-			window.onpopstate = function() {
-				window.history.pushState(null, null, '/signin');
-			};
+			// Only set a single pushState to clean the history
+			window.history.pushState(null, '', '/signin');
+			
+			// Remove any existing onpopstate handler
+			window.onpopstate = null;
 		}
 	};
 

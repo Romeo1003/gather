@@ -17,36 +17,20 @@ const ProtectedRoute = ({ children, adminRequired = false }) => {
 	// Add a state for tracking if we're redirecting from an unauthorized attempt
 	const [isRedirecting, setIsRedirecting] = useState(false);
 
-	// Handle session state and prevent back-button issues
+	// This effect is problematic and can cause issues with admin access
+	// Let's simplify it to avoid interference with legitimate navigation
 	useEffect(() => {
-		// Add a listener to intercept back button navigation when logged out
-		const handlePopState = () => {
-			if (!user) {
-				// If user is not authenticated, prevent navigation to protected routes
-				const protectedPaths = ['/dashboard', '/admin', '/profile'];
-				const currentPath = window.location.pathname;
-				
-				if (protectedPaths.some(path => currentPath.startsWith(path))) {
-					console.log('Intercepted back navigation to protected route while logged out');
-					navigate('/signin', { replace: true });
-				}
-			}
-		};
-
-		window.addEventListener('popstate', handlePopState);
-		return () => window.removeEventListener('popstate', handlePopState);
-	}, [user, navigate]);
-
-	useEffect(() => {
-		let timer;
+		// Only run the effect if we have a user and they're trying to access admin content
 		if (user && requiresAdmin && user.role !== 'admin') {
+			// Show unauthorized message briefly before redirecting
 			setShowUnauthorized(true);
-			timer = setTimeout(() => {
+			const timer = setTimeout(() => {
 				setShowUnauthorized(false);
 				setIsRedirecting(true);
 			}, 2000);
+			
+			return () => clearTimeout(timer);
 		}
-		return () => clearTimeout(timer);
 	}, [user, requiresAdmin]);
 
 	// If still loading, show loading indicator
@@ -69,14 +53,14 @@ const ProtectedRoute = ({ children, adminRequired = false }) => {
 
 	// If user is not logged in, redirect to login
 	if (!user) {
-		console.log("User not authenticated, redirecting to signin");
+		console.log("ProtectedRoute: User not authenticated, redirecting to signin");
 		// Use replace to prevent going back to protected routes via browser back button
 		return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
 	}
 	
 	// For admin routes or routes that require admin, check if user has admin role
 	if (requiresAdmin && user.role !== 'admin') {
-		console.log(`Access denied for ${user.email} (${user.role}) to admin route`);
+		console.log(`ProtectedRoute: Access denied for ${user.email} (${user.role}) to admin route`);
 		
 		if (showUnauthorized) {
 			return (
@@ -103,11 +87,14 @@ const ProtectedRoute = ({ children, adminRequired = false }) => {
 	}
 
 	// Make sure regular users don't access admin routes
-	if (!requiresAdmin && user.role === 'admin' && isRedirecting === false) {
-		console.log("Admin user accessing regular route, redirecting to admin dashboard");
+	// But this check should be conditional on whether we're already redirecting
+	if (!requiresAdmin && user.role === 'admin' && !isRedirecting) {
+		console.log("ProtectedRoute: Admin user accessing regular route, redirecting to admin dashboard");
 		return <Navigate to="/admin" replace />;
 	}
 
+	// Render the protected content
+	console.log(`ProtectedRoute: Access granted for ${user.email} (${user.role})`);
 	return children;
 };
 

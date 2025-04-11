@@ -31,28 +31,43 @@ const HistoryBlocker = () => {
   const location = useLocation();
   
   useEffect(() => {
-    // Get auth state
+    // This effect should only block navigation to protected routes when not authenticated
+    // It should not interfere with normal authenticated navigation
+    
+    // Get auth state - only check localStorage, not from context to avoid circular dependencies
     const isAuthenticated = localStorage.getItem('token') !== null;
+    
+    // If authenticated, don't block anything
+    if (isAuthenticated) {
+      return;
+    }
+    
     const currentPath = location.pathname;
     const protectedPaths = ['/dashboard', '/admin', '/profile', '/custdashboard'];
     
-    // Check if attempting to access protected path without authentication
-    if (!isAuthenticated && protectedPaths.some(path => currentPath.startsWith(path))) {
-      console.log('Blocked navigation to protected route while logged out');
+    // Only redirect if not authenticated and trying to access protected route
+    const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
+    
+    if (!isAuthenticated && isProtectedPath) {
+      console.log('HistoryBlocker: Blocked navigation to protected route while logged out');
       navigate('/signin', { replace: true });
     }
     
-    // Handle browser back button
-    const handleBeforeUnload = () => {
-      // If user is not authenticated and trying to access protected route
-      if (!isAuthenticated && protectedPaths.some(path => currentPath.startsWith(path))) {
+    // Simplified popstate handler that only checks current state
+    const handlePopState = () => {
+      const isAuthenticatedNow = localStorage.getItem('token') !== null;
+      const currentPathNow = window.location.pathname;
+      const isProtectedPathNow = protectedPaths.some(path => currentPathNow.startsWith(path));
+      
+      if (!isAuthenticatedNow && isProtectedPathNow) {
+        console.log('HistoryBlocker: Intercepted back navigation to protected route');
         navigate('/signin', { replace: true });
       }
     };
     
-    window.addEventListener('popstate', handleBeforeUnload);
-    return () => window.removeEventListener('popstate', handleBeforeUnload);
-  }, [location, navigate]);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [location.pathname, navigate]);
   
   return null;
 };
