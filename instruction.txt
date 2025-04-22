@@ -1,0 +1,86 @@
+# Gather - Event Management System
+# Instructions to Run the Project
+
+## Prerequisites
+- Node.js (v14 or higher)
+- Python (v3.8 or higher)
+- MySQL database
+
+## Setup Steps
+
+### 1. Database Setup
+- Create a MySQL database named 'gather_db'
+- Make sure MySQL is running on port 3306
+- The default credentials in .env are:
+  - Username: root
+  - Password: (empty)
+
+### 2. Backend Setup
+- Navigate to the backend directory:
+  ```
+  cd /Users/romeo/Downloads/FinalProj(2025)/Gather 2/backend
+  ```
+
+- Create a Python virtual environment:
+  ```
+  python -m venv venv
+  ```
+
+- Activate the virtual environment:
+  - On macOS/Linux:
+    ```
+    source venv/bin/activate
+    ```
+  - On Windows:
+    ```
+    venv\Scripts\activate
+    ```
+
+- Install Node.js dependencies:
+  ```
+  npm install
+  ```
+
+- Start the backend server:
+  ```
+  npm run dev
+  ```
+
+- The backend will run on http://localhost:3000
+
+### 3. Frontend Setup
+- Open a new terminal window
+- Navigate to the frontend directory:
+  ```
+  cd /Users/romeo/Downloads/FinalProj(2025)/Gather 2/frontend
+  ```
+
+- Install dependencies:
+  ```
+  npm install
+  ```
+
+- Start the frontend development server:
+  ```
+  npm run dev
+  ```
+
+- The frontend will run on http://localhost:5173
+
+### 4. Access the Application
+- Open your browser and go to:
+  - Frontend: http://localhost:5173
+  - Backend API: http://localhost:3000/api/health (to check if it's running)
+
+### 5. Default Admin Login
+- Email: admin@ems.com
+- Password: admin123
+
+## Troubleshooting
+- If you encounter port conflicts, the backend server will attempt to kill the process using port 3000
+- Make sure MySQL is running before starting the backend
+- Check the backend console for any database connection errors
+- If you see errors about missing modules, try running `npm install` again in both frontend and backend directories
+
+## GitHub Repository
+- This project is available at: https://github.com/Romeo1003/Gather

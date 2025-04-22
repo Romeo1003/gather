@@ -13,23 +13,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Path to the CA certificate file
 const caPath = path.join(__dirname, "ca.pem");
 
+// Get database configuration from environment variables
+const dbName = process.env.DB_NAME;
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASSWORD;
+const dbHost = process.env.DB_HOST;
+const dbPort = process.env.DB_PORT;
+
 // Initialize Sequelize
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "mysql",
-    dialectOptions: {
-      ssl: {
-        ca: fs.readFileSync(caPath),
-      },
-    },
-    logging: false, // Disable logging SQL queries in the console
+const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
+  host: dbHost,
+  port: dbPort,
+  dialect: "mysql",
+  logging: false,
+  dialectOptions: {
+    // Disable SSL by default unless explicitly enabled
+    ssl: false
   }
-);
+});
 
 // Test the connection
 async function testConnection() {

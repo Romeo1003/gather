@@ -1,20 +1,25 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ForgotPasswordPage from "./components/ForgotPass";
-import ResetPasswordPage from "./components/ResetPass";
-import { ThemeProvider, CssBaseline } from "@mui/material";
-import SignupPage from "./components/SignupPage";
-import SignInPage from "./components/SignInPage";
-import EventDashboard from "./components/EventDashboard/EventDashboard";
-import CustomerDashboard from "./components/EventDashboard/CustomerDashboard";
-// import EventManagement from "./components/EventDashboard/EventManagement";
-import AllEvents from "./components/EventDashboard/Events";
-import BookingsTickets from "./components/EventDashboard/MyBookingsTickets";
-import LandingPage from "./components/landing";
-import ProfileSettings from "./components/ProfileSettings";
-import theme from "./theme";
-import AuthProvider from './context/AuthProvider';
-import ProtectedRoute from "./components/ProtectedRoute";
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import theme from './theme';
+import { AuthProvider } from './context/AuthProvider';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UsersList from './pages/admin/UsersList';
+import EventsList from './pages/admin/EventsList';
+import Settings from './pages/admin/Settings';
+import Unauthorized from './pages/Unauthorized';
+import LandingPage from './pages/LandingPage';
+import SignupPage from './pages/SignupPage';
+import SignInPage from './pages/SignInPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import CustomerDashboard from './pages/customer/CustomerDashboard';
+import AllEvents from './pages/customer/AllEvents';
+import OrganiserDashboard from './pages/organiser/OrganiserDashboard';
+
+// Import the ChatBot component
+import ChatBot from './components/ChatBot/ChatBot';
 
 function App() {
   return (
@@ -23,46 +28,30 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/signin" element={<SignInPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
 
-            {/* Protected routes */}
-            <Route path="/dashboard/home" element={
-              <ProtectedRoute>
-                <EventDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/custdashboard/home" element={
-              <ProtectedRoute>
-                <CustomerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/custdashboard/events" element={
-              <ProtectedRoute>
-                <AllEvents />
-              </ProtectedRoute>
-            } />
-            {/* <Route path="/dashboard/edit-event" element={
-              <ProtectedRoute>
-                <EventManagement />
-              </ProtectedRoute>
-            } /> */}
-            <Route path="/dashboard/bookings" element={
-              <ProtectedRoute>
-                <BookingsTickets />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <ProfileSettings />
-              </ProtectedRoute>
-            } />
+            {/* Admin Routes */}
+            <Route path="/dashboard/home" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/users" element={<ProtectedRoute allowedRoles={['admin']}><UsersList /></ProtectedRoute>} />
+            <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['admin']}><EventsList /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute allowedRoles={['admin']}><Settings /></ProtectedRoute>} />
 
-            <Route path="*" element={<Navigate to="/signin" replace />} />
+            {/* Customer Routes */}
+            <Route path="/c/dashboard/home" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
+            <Route path="/c/dashboard/events" element={<ProtectedRoute allowedRoles={['customer']}><AllEvents /></ProtectedRoute>} />
+
+            {/* Organiser Routes */}
+            <Route path="/o/dashboard/home" element={<ProtectedRoute allowedRoles={['organiser']}><OrganiserDashboard /></ProtectedRoute>} />
           </Routes>
+          
+          {/* ChatBot component */}
+          <ChatBot />
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
