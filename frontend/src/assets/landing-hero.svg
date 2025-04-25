@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <style>
+    .primary { fill: #0ea5e9; }
+    .secondary { fill: #64748b; }
+    .accent { fill: #0c4a6e; }
+    .background { fill: #f0f9ff; }
+  </style>
+  
+  <!-- Background Shape -->
+  <path class="background" d="M0 0h800v600H0z"/>
+  
+  <!-- Abstract Event Elements -->
+  <circle class="primary" cx="400" cy="300" r="150" opacity="0.1"/>
+  <circle class="primary" cx="400" cy="300" r="100" opacity="0.2"/>
+  
+  <!-- Calendar Icon -->
+  <rect class="secondary" x="350" y="250" width="100" height="100" rx="10"/>
+  <rect class="accent" x="350" y="250" width="100" height="30" rx="10"/>
+  <rect fill="white" x="370" y="290" width="20" height="20" rx="2"/>
+  <rect fill="white" x="400" y="290" width="20" height="20" rx="2"/>
+  <rect fill="white" x="370" y="320" width="20" height="20" rx="2"/>
+  
+  <!-- People Icons -->
+  <circle class="primary" cx="250" cy="300" r="30"/>
+  <circle class="secondary" cx="550" cy="300" r="30"/>
+  <circle class="accent" cx="400" cy="450" r="30"/>
+  
+  <!-- Connecting Lines -->
+  <path class="primary" d="M280 300h40" stroke-width="4" stroke="currentColor"/>
+  <path class="primary" d="M480 300h40" stroke-width="4" stroke="currentColor"/>
+  <path class="primary" d="M400 380v40" stroke-width="4" stroke="currentColor"/>
+  
+  <!-- Decorative Elements -->
+  <circle class="primary" cx="200" cy="200" r="10" opacity="0.5"/>
+  <circle class="secondary" cx="600" cy="400" r="10" opacity="0.5"/>
+  <circle class="accent" cx="300" cy="500" r="10" opacity="0.5"/>
+</svg>

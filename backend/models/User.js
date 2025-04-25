@@ -1,19 +1,27 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
+import bcrypt from "bcrypt";
 
-const User = sequelize.define("User", {
+export const User = sequelize.define("User", {
+	id: {
+		type: DataTypes.INTEGER,
+		autoIncrement: true,
+		primaryKey: true,
+	},
 	name: {
-		type: DataTypes.STRING(100),
+		type: DataTypes.STRING,
 		allowNull: false,
 	},
 	email: {
-		type: DataTypes.STRING(100),
+		type: DataTypes.STRING,
 		allowNull: false,
 		unique: true,
-		primaryKey: true,
+		set(value) {
+			this.setDataValue('email', value.toLowerCase());
+		},
 	},
 	password: {
-		type: DataTypes.STRING(255),
+		type: DataTypes.STRING,
 		allowNull: false,
 	},
 	creation_date: {
@@ -25,9 +33,25 @@ const User = sequelize.define("User", {
 		defaultValue: "public",
 	},
 	role: {
-		type: DataTypes.ENUM("admin", "customer"),
-		defaultValue: "customer"
+		type: DataTypes.ENUM('admin', 'customer'),
+		defaultValue: 'customer',
 	},
+}, {
+	timestamps: true,
+	hooks: {
+		beforeCreate: async (user) => {
+			if (user.password) {
+				const salt = await bcrypt.genSalt(10);
+				user.password = await bcrypt.hash(user.password, salt);
+			}
+		},
+		beforeUpdate: async (user) => {
+			if (user.changed('password')) {
+				const salt = await bcrypt.genSalt(10);
+				user.password = await bcrypt.hash(user.password, salt);
+			}
+		}
+	}
 });
 
 export default User;

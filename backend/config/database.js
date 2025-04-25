@@ -27,8 +27,9 @@ if (useSqlite) {
   // Use file-based SQLite instead of in-memory for persistence
   sequelize = new Sequelize({
     dialect: "sqlite",
-    storage: "database.sqlite", // Store in a file instead of memory
-    logging: false,
+    storage: "database.sqlite", // Ensure this path is correct
+    logging: (msg, time) => console.log(`SQL: ${msg} | Time: ${time}ms`),
+    benchmark: true,
   });
 } else {
   // This branch won't be used, but kept for reference
@@ -40,7 +41,8 @@ if (useSqlite) {
     {
       host: process.env.DB_HOST,
       dialect: "mysql",
-      logging: false,
+      logging: (msg, time) => console.log(`SQL: ${msg} | Time: ${time}ms`),
+    benchmark: true,
     }
   );
 }

@@ -1,58 +1,108 @@
 import { EventRequest, Venue, User, Guest, Payment } from '../models/index.js';
-import { sendEmail } from '../utils/emailService.js';
-import asyncHandler from 'express-async-handler';
+import { Op } from 'sequelize';
 
 // Create a new event request
-export const createEventRequest = asyncHandler(async (req, res) => {
-  const {
-    eventType,
-    title,
-    description,
-    estimatedGuests,
-    budget,
-    startDate,
-    endDate,
-    venue,
-    specialRequests
-  } = req.body;
+export const createEventRequest = async (req, res) => {
+  try {
+    const {
+      eventType,
+      title,
+      description,
+      estimatedGuests,
+      budget,
+      startDate,
+      endDate,
+      venueId,
+      specialRequests
+    } = req.body;
 
-  // Validate venue exists
-  const venueExists = await Venue.findById(venue);
-  if (!venueExists) {
-    res.status(404);
-    throw new Error('Venue not found');
+    // Validate venue exists
+    const venueExists = await Venue.findByPk(venueId);
+    if (!venueExists) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    // Create event request
+    const eventRequest = await EventRequest.create({
+      clientEmail: req.user.email,
+      eventType,
+      title,
+      description,
+      estimatedGuests,
+      budget,
+      startDate,
+      endDate,
+      venueId,
+      specialRequests,
+      notificationSent: false
+    });
+
+    if (eventRequest) {
+      // Return the created event request with venue details
+      const eventRequestWithVenue = await EventRequest.findByPk(eventRequest.id, {
+        include: [
+          {
+            model: Venue,
+            as: 'venue'
+          }
+        ]
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Event request created successfully',
+        eventRequest: eventRequestWithVenue
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid event request data' });
+    }
+  } catch (error) {
+    console.error('Error creating event request:', error);
+    res.status(500).json({
+      message: 'Failed to create event request',
+      error: error.message
+    });
   }
-
-  // Create event request
-  const eventRequest = await EventRequest.create({
-    user: req.user._id,
-    eventType,
-    title,
-    description,
-    estimatedGuests,
-    budget,
-    startDate,
-    endDate,
-    venue,
-    specialRequests
-  });
-
-  if (eventRequest) {
-    res.status(201).json(eventRequest);
-  } else {
-    res.status(400);
-    throw new Error('Invalid event request data');
-  }
-});
+};
 
 // Get all event requests for admin
-export const getAllEventRequests = asyncHandler(async (req, res) => {
-  const eventRequests = await EventRequest.find({})
-    .populate('user', 'name email')
-    .populate('venue', 'name location')
-    .sort({ createdAt: -1 });
-  res.json(eventRequests);
-});
+export const getAllEventRequests = async (req, res) => {
+  try {
+    // Ensure user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to access all event requests' });
+    }
+
+    const eventRequests = await EventRequest.findAll({
+      include: [
+        {
+          model: User,
+          as: 'client',
+          attributes: ['name', 'email']
+        },
+        {
+          model: Venue,
+          as: 'venue',
+          attributes: ['name', 'location', 'capacity']
+        },
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.status(200).json(eventRequests);
+  } catch (error) {
+    console.error('Error getting all event requests:', error);
+    res.status(500).json({
+      message: 'Failed to get event requests',
+      error: error.message
+    });
+  }
+};
 
 // Get event requests for a client
 export const getClientEventRequests = async (req, res) => {

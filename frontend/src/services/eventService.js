@@ -1,11 +1,11 @@
-import axios from "axios";
+import { createApiClient } from './apiClient';
 
-// Create axios instance with base URL
-const api = axios.create({
-  baseURL: "http://localhost:5001/api/events", // Adjust this to your backend URL
-  headers: {
-    "Content-Type": "application/json",
-  },
+const api = createApiClient({
+  baseURL: 'http://localhost:5001/api/events',
+  errorHandler: (error) => console.error('API Error:', error),
+  authProvider: {
+    getToken: () => localStorage.getItem('token')
+  }
 });
 
 // Function to create a new event
@@ -24,11 +24,7 @@ export const createEvent = async (eventData) => {
     formData.append("banner", eventData.banner);
   }
 
-  const response = await axios.post("http://localhost:5001/api/events", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await api.post('/', formData);
   return response.data;
 };
 

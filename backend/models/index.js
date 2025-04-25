@@ -1,3 +1,4 @@
+// Import models
 import Events from './Event.js';
 import User from './User.js';
 import Venue from './Venue.js';
@@ -6,42 +7,34 @@ import Payment from './Payment.js';
 import EventRequest from './EventRequest.js';
 import Guest from './Guest.js';
 
-// Define associations between models
-Events.belongsTo(Venue, { foreignKey: 'venueId', as: 'venue' });
-Venue.hasMany(Events, { foreignKey: 'venueId', as: 'events' });
+// Define associations
+// User to Events (one-to-many)
+User.hasMany(Events, { foreignKey: 'organizerEmail', sourceKey: 'email' });
+Events.belongsTo(User, { foreignKey: 'organizerEmail', targetKey: 'email' });
 
-Invite.belongsTo(Events, { foreignKey: 'eventId', as: 'event' });
-Events.hasMany(Invite, { foreignKey: 'eventId', as: 'invites' });
+// Venue to Events (one-to-many)
+Venue.hasMany(Events, { foreignKey: 'venueId', as: 'Events' });
+Events.belongsTo(Venue, { foreignKey: 'venueId' });
 
-Invite.belongsTo(User, { foreignKey: 'sentBy', as: 'sender' });
-User.hasMany(Invite, { foreignKey: 'sentBy', as: 'sentInvites' });
+// User to EventRequest (one-to-many)
+User.hasMany(EventRequest, { foreignKey: 'clientEmail', sourceKey: 'email' });
+EventRequest.belongsTo(User, { foreignKey: 'clientEmail', targetKey: 'email', as: 'client' });
 
-Payment.belongsTo(Invite, { foreignKey: 'inviteId', as: 'invite' });
-Invite.hasOne(Payment, { foreignKey: 'inviteId', as: 'payment' });
+// Admin (User) to EventRequest (one-to-many)
+User.hasMany(EventRequest, { foreignKey: 'reviewerId', as: 'reviewedRequests' });
+EventRequest.belongsTo(User, { foreignKey: 'reviewerId', as: 'reviewer' });
 
-Payment.belongsTo(User, { foreignKey: 'paidBy', as: 'payingUser' });
-User.hasMany(Payment, { foreignKey: 'paidBy', as: 'payments' });
-
-Payment.belongsTo(User, { foreignKey: 'approvedBy', as: 'approvingAdmin' });
-User.hasMany(Payment, { foreignKey: 'approvedBy', as: 'approvedPayments' });
-
-// Skip EventRequest associations for now since they're causing issues
-// We'll comment these out until the model is properly defined
-/*
-// Event Request associations
-EventRequest.belongsTo(User, { foreignKey: 'clientEmail', as: 'client' });
-User.hasMany(EventRequest, { foreignKey: 'clientEmail', as: 'eventRequests' });
-
+// Venue to EventRequest (one-to-many)
+Venue.hasMany(EventRequest, { foreignKey: 'venueId' });
 EventRequest.belongsTo(Venue, { foreignKey: 'venueId', as: 'venue' });
-Venue.hasMany(EventRequest, { foreignKey: 'venueId', as: 'eventRequests' });
 
-EventRequest.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
-User.hasMany(EventRequest, { foreignKey: 'reviewedBy', as: 'reviewedRequests' });
+// EventRequest to Guest (one-to-many)
+EventRequest.hasMany(Guest, { foreignKey: 'eventRequestId' });
+Guest.belongsTo(EventRequest, { foreignKey: 'eventRequestId' });
 
-// Guest associations
-Guest.belongsTo(EventRequest, { foreignKey: 'eventRequestId', as: 'eventRequest' });
-EventRequest.hasMany(Guest, { foreignKey: 'eventRequestId', as: 'guests' });
-*/
+// EventRequest to Payment (one-to-many)
+EventRequest.hasMany(Payment, { foreignKey: 'eventRequestId' });
+Payment.belongsTo(EventRequest, { foreignKey: 'eventRequestId' });
 
 // Export all models
 export {
@@ -52,4 +45,4 @@ export {
   Payment,
   EventRequest,
   Guest
-}; 
+};

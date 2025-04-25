@@ -8,33 +8,25 @@ import bcrypt from 'bcrypt';
 export const getDashboardStats = async (req, res) => {
   try {
     // Count total events
-    const totalEvents = await Events.count();
-    
-    // Count active events
-    const activeEvents = await Events.count({
-      where: {
-        endDate: {
-          [Op.gt]: new Date()
+    const [
+      totalEvents,
+      activeEvents,
+      totalUsers,
+      adminUsers,
+      customerUsers
+    ] = await Promise.all([
+      Events.count(),
+      Events.count({
+        where: {
+          endDate: {
+            [Op.gt]: new Date()
+          }
         }
-      }
-    });
-    
-    // Count total users
-    const totalUsers = await User.count();
-    
-    // Count admin users
-    const adminUsers = await User.count({
-      where: {
-        role: 'admin'
-      }
-    });
-    
-    // Count customer users
-    const customerUsers = await User.count({
-      where: {
-        role: 'customer'
-      }
-    });
+      }),
+      User.count(),
+      User.count({ where: { role: 'admin' } }),
+      User.count({ where: { role: 'customer' } })
+    ]);
     
     res.status(200).json({
       totalEvents,
@@ -298,4 +290,4 @@ export const checkNewNotifications = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};

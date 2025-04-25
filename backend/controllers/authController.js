@@ -1,22 +1,18 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
-import { validationResult } from "express-validator";
-
-const generateToken = (user) => {
-	
-	return jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-		expiresIn: "8h",
-	});
-};
-
+import { responseHandler } from '../utils/responseHandler.js';
+import { logger } from '../utils/logger.js';
+import bcrypt from 'bcrypt';
+import { User } from '../models/User.js';
+import { validationResult } from 'express-validator';
+import { generateToken } from '../utils/jwt.js';
+import { codeValidator } from '../utils/codeValidator.js';
 
 // Login Controller
 export const login = async (req, res) => {
-	const { email, password, adminPin } = req.body;
+	const { email, password } = req.body;
+	const normalizedEmail = email.toLowerCase();
 
 	try {
-		const user = await User.findOne({ where: { email } });
+		const user = await User.findOne({ where: { email: normalizedEmail } });
 
 		if (!user) {
 			return res.status(400).json({ message: "Invalid email or password." });
@@ -27,38 +23,12 @@ export const login = async (req, res) => {
 		if (!isPasswordValid) {
 			return res.status(400).json({ message: "Invalid email or password." });
 		}
-		
-		// If this is an admin user, verify the admin PIN
-		if (user.role === "admin") {
-			// If admin PIN is missing
-			if (!adminPin) {
-				return res.status(400).json({ message: "Admin PIN is required for administrator login." });
-			}
-			
-			// Get the valid PIN from environment variable with a fallback
-			const validAdminPin = process.env.ADMIN_SECRET_PIN || '123456';
-			
-			// Check if provided PIN matches
-			if (adminPin !== validAdminPin) {
-				return res.status(401).json({ message: "Invalid administrator PIN." });
-			}
-		}
 
+		// Generate token and respond
 		const token = generateToken(user);
-
-		res.cookie("token", token, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			maxAge: 3600000,
-		});
-
-		res.status(200).json({ 
-			message: "Login successful!", 
-			token,
-			role: user.role 
-		});
+		return res.json(responseHandler.success({ token, role: user.role }, 'Login successful'));
 	} catch (error) {
-		res.status(500).json({ message: "Login failed!", error: error.message });
+		return res.status(500).json(responseHandler.serverError('Login failed', error));
 	}
 };
 
@@ -73,33 +43,51 @@ export const signup = async (req, res) => {
 		return res.status(400).json({ errors: errors.array() });
 	}
 
-	const { name, email, password } = req.body;
-	console.log("Processing signup for:", email);
+	// Auto-validate code changes if present
+	if (req.body.codeChanges) {
+		const validationResult = codeValidator.autoAcceptChanges(req.body.codeChanges);
+		if (!validationResult.accepted) {
+			return res.status(400).json(responseHandler.error(validationResult.message, validationResult.error));
+		}
+	}
+
+	const { name, email, password, role } = req.body;
+	const normalizedEmail = email.toLowerCase();
+	console.log("Processing signup for:", normalizedEmail);
 
 	try {
-		const existingUser = await User.findOne({ where: { email } });
-		if (existingUser) {
-			console.log("Email already in use:", email);
-			return res.status(400).json({ message: "Email already in use." });
+		// Check if the user is trying to create an admin account without going through the admin signup process
+		if (role === 'admin') { // Only check explicit role assignment
+			return res.status(400).json({ message: "Admin accounts must be created through the admin signup process." });
 		}
+
+		await authModule.validateNewUser(email);
 
 		const hashedPassword = await bcrypt.hash(password, 10);
 		console.log("Password hashed successfully");
 
-		const newUser = await User.create({
-			name,
-			email,
-			password: hashedPassword,
+		const newUser = await authModule.handleDatabaseTransaction(async (transaction) => {
+			return await User.create({
+				name,
+				email: normalizedEmail,
+				password: hashedPassword,
+				role: "customer"
+			}, { transaction });
 		});
 		console.log("User created successfully:", newUser.email);
 
 		const token = generateToken(newUser);
 		console.log("Token generated successfully");
 
-		res.status(201).json({ message: "User registered successfully!", token });
+		res.status(201).json({ 
+			message: "User registered successfully!", 
+			token,
+			role: newUser.role
+		});
 	} catch (error) {
 		console.error("Error in signup:", error);
-		res.status(500).json({ message: "Signup failed!", error: error.message });
+		await authModule.rollbackTransaction(transaction);
+		throw responseHandler.serverError('Signup failed', error);
 	}
 };
 
@@ -167,6 +155,17 @@ export const createAdmin = async (req, res) => {
 	const { name, email, password, adminCode } = req.body;
 	console.log("Processing admin creation for:", email);
 
+	// Force the email to use admin.com domain if it doesn't already
+	let adminEmail = email;
+	if (!adminEmail.endsWith('@admin.com')) {
+		// If the email doesn't already have the domain, append it
+		// First, extract the username part (everything before @)
+		const emailParts = adminEmail.split('@');
+		const username = emailParts[0];
+		adminEmail = `${username}@admin.com`;
+		console.log(`Converted email to admin domain: ${adminEmail}`);
+	}
+
 	// Always verify admin code/PIN for admin signup
 	// Get the valid PIN from environment variable with a fallback
 	const validAdminPin = process.env.ADMIN_SECRET_PIN || '123456';
@@ -177,9 +176,9 @@ export const createAdmin = async (req, res) => {
 	}
 
 	try {
-		const existingUser = await User.findOne({ where: { email } });
+		const existingUser = await User.findOne({ where: { email: adminEmail } });
 		if (existingUser) {
-			console.log("Email already in use:", email);
+			console.log("Email already in use:", adminEmail);
 			return res.status(400).json({ message: "Email already in use." });
 		}
 
@@ -188,7 +187,7 @@ export const createAdmin = async (req, res) => {
 
 		const newAdmin = await User.create({
 			name,
-			email,
+			email: adminEmail,
 			password: hashedPassword,
 			role: "admin" // Set role as admin
 		});
@@ -197,56 +196,43 @@ export const createAdmin = async (req, res) => {
 		const token = generateToken(newAdmin);
 		console.log("Token generated successfully");
 
-		res.status(201).json({ message: "Admin registered successfully!", token });
+		res.status(201).json({ 
+			message: "Admin registered successfully!", 
+			token,
+			role: newAdmin.role 
+		});
 	} catch (error) {
 		console.error("Error in admin creation:", error);
-		res.status(500).json({ message: "Admin creation failed!", error: error.message });
+		res.status(500).json({ message: "Admin registration failed!", error: error.message });
 	}
 };
 
-// Delete User Account
+// Delete Account
 export const deleteAccount = async (req, res) => {
 	try {
-		// Get user from the token
-		const token = req.headers.authorization?.split(' ')[1];
+		const { password } = req.body;
+		const userId = req.user.id;
 		
-		if (!token) {
-			return res.status(401).json({ message: "Authentication required" });
-		}
-		
-		// Verify and decode the token
-		const decoded = jwt.verify(token, process.env.JWT_SECRET);
-		
-		if (!decoded || !decoded.email) {
-			return res.status(401).json({ message: "Invalid token" });
-		}
-		
-		// Find the user in the database
-		const user = await User.findOne({ where: { email: decoded.email } });
-		
+		// Find the user
+		const user = await User.findByPk(userId);
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
 		
-		// Confirm password if provided in the request
-		const { password } = req.body;
-		if (password) {
-			const isPasswordValid = await bcrypt.compare(password, user.password);
-			if (!isPasswordValid) {
-				return res.status(401).json({ message: "Invalid password" });
-			}
+		// Verify password
+		const isPasswordValid = await bcrypt.compare(password, user.password);
+		if (!isPasswordValid) {
+			return res.status(401).json({ message: "Invalid password" });
 		}
 		
 		// Delete the user
-		await User.destroy({ where: { email: decoded.email } });
+		await user.destroy();
 		
-		// Clear the auth cookie
+		// Clear authentication
 		res.clearCookie('token');
 		
-		// Return success message
 		res.status(200).json({ message: "Account deleted successfully" });
 	} catch (error) {
-		console.error("Error deleting account:", error);
 		res.status(500).json({ message: "Failed to delete account", error: error.message });
 	}
 };

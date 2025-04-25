@@ -48,7 +48,7 @@ export const getAllVenues = async (req, res) => {
       include: [
         {
           model: Events,
-          as: 'events',
+          as: 'Events',
           attributes: ['id', 'title', 'startDate', 'endDate']
         }
       ]
@@ -74,7 +74,7 @@ export const getVenueById = async (req, res) => {
       include: [
         {
           model: Events,
-          as: 'events',
+          as: 'Events',
           attributes: ['id', 'title', 'startDate', 'endDate', 'registered']
         }
       ]

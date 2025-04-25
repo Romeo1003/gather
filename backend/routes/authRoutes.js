@@ -1,22 +1,55 @@
 import express from "express";
-import { signup, login, logout, verifyToken, createAdmin, deleteAccount } from "../controllers/authController.js";
-import { validateSignup, validateLogin } from "../validations/authValidation.js";
-import { verifyToken as authVerify, isAdmin } from "../middleware/authMiddleware.js";
+import { body, validationResult } from "express-validator";
+import { signup, login, verifyToken, logout, createAdmin, deleteAccount } from "../controllers/authController.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/signup", validateSignup, signup);
-router.post("/login", validateLogin, login);
-router.post("/logout", logout);
+// Signup route - allow users to register
+router.post(
+  "/signup",
+  [
+    body("name").trim().notEmpty().withMessage("Name is required"),
+    body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
+    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long")
+  ],
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    next();
+  },
+  signup
+);
+
+// Admin signup route
+router.post(
+  "/admin-signup",
+  [
+    body("name").trim().notEmpty().withMessage("Name is required"),
+    body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
+    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
+    body("adminCode").notEmpty().withMessage("Admin authentication PIN is required"),
+  ],
+  createAdmin
+);
+
+// Login route
+router.post(
+  "/login",
+  [
+    body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  login
+);
+
+// Verify token route
 router.get("/verify", verifyToken);
 
-// Public admin signup endpoint with secret code
-router.post("/admin-signup", validateSignup, createAdmin);
+// Logout route
+router.post("/logout", logout);
 
-// Protected admin creation route (existing admin creating new admin)
-router.post("/create-admin", authVerify, isAdmin, validateSignup, createAdmin);
-
-// Protected delete account route
-router.delete("/delete-account", authVerify, deleteAccount);
+// Delete account route (protected)
+router.delete("/delete-account", authMiddleware, deleteAccount);
 
 export default router;

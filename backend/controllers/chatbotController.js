@@ -18,14 +18,25 @@ export const processChatQuery = async (req, res) => {
       type: 'text'
     };
 
-    // Lowercase query for easier matching
-    const lowercaseQuery = query.toLowerCase();
+    // Load NLP model
+    const model = await loadNLPModel();
     
-    // Check for event related queries
-    if (lowercaseQuery.includes('event') || 
-        lowercaseQuery.includes('happening') || 
-        lowercaseQuery.includes('what') || 
-        lowercaseQuery.includes('show me')) {
+    // Classify query using NLP model
+    const classification = await classifyQuery(model, query);
+    
+    // Handle fallback to keyword matching
+    const { intent, confidence } = classification;
+    const useKeywordFallback = confidence < 0.65;
+
+    // Log processing approach
+    logger.info(`Processing query with ${useKeywordFallback ? 'keyword fallback' : 'NLP model'}`, { 
+      intent, 
+      confidence: confidence.toFixed(2),
+      queryLength: query.length 
+    });
+    
+    // Handle detected intent
+    if (intent === 'event_query' || useKeywordFallback && lowercaseQuery.match(/event|happening|what|show me/i)) {
       
       // Process date filtering if present
       let dateFilter = null;
@@ -109,11 +120,8 @@ export const processChatQuery = async (req, res) => {
       }
       
     }
-    // Check for venue related queries
-    else if (lowercaseQuery.includes('venue') || 
-             lowercaseQuery.includes('location') || 
-             lowercaseQuery.includes('where') || 
-             lowercaseQuery.includes('place')) {
+    // Handle venue intent
+    else if (intent === 'venue_query' || useKeywordFallback && lowercaseQuery.match(/venue|location|where|place/i)) {
       
       try {
         const venues = await Venue.findAll({
@@ -149,11 +157,8 @@ export const processChatQuery = async (req, res) => {
         response.message = 'Sorry, I had trouble finding venues. Please try again later.';
       }
     }
-    // Check for booking related queries
-    else if (lowercaseQuery.includes('book') || 
-             lowercaseQuery.includes('reserve') || 
-             lowercaseQuery.includes('registration') ||
-             lowercaseQuery.includes('register')) {
+    // Handle booking intent
+    else if (intent === 'booking_query' || useKeywordFallback && lowercaseQuery.match(/book|reserve|registration|register/i)) {
       
       response.message = 'To book an event or venue, you can:';
       response.type = 'booking_info';
@@ -172,11 +177,8 @@ export const processChatQuery = async (req, res) => {
         'What are the payment options?'
       ];
     }
-    // Help query
-    else if (lowercaseQuery.includes('help') || 
-             lowercaseQuery.includes('how to') || 
-             lowercaseQuery.includes('guide') ||
-             lowercaseQuery.includes('assist')) {
+    // Handle help intent
+    else if (intent === 'help_query' || useKeywordFallback && lowercaseQuery.match(/help|how to|guide|assist/i)) {
       
       response.message = 'I can help you with the following:';
       response.type = 'help';
@@ -303,4 +305,4 @@ export const getFilteredEvents = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};

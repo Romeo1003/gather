@@ -1,0 +1,59 @@
+# Event Management System - Setup Instructions
+
+## Prerequisites
+- Node.js (v16 or higher)
+- npm (v8 or higher)
+- Python (for virtual environment)
+
+
+## Setup Instructions
+
+### 1. Set up Virtual Environment
+- Navigate to the project directory
+- Create a virtual environment: python -m venv venv
+- Activate the virtual environment: source venv/bin/activate
+
+
+### 2. Backend Setup
+- Navigate to the backend directory: cd backend
+- Install dependencies: npm install
+- Start the backend server: npm run dev
+
+### 3. Frontend Setup
+- Open a new terminal window
+- Navigate to the frontend directory: cd frontend
+- Install dependencies: npm install
+- Start the frontend development server: npm run dev
+
+
+## Features Implemented
+
+1. User Authentication
+   - Login/Signup for customers and admins
+   - Role-based access control
+
+2. Event Management
+   - Create, view, update, and delete events
+   - Join existing events
+   - Request to create custom events
+
+3. Venue Management
+   - Browse available venues
+   - Check venue capacity and services
+
+
+4. Admin Dashboard
+   - Manage event requests
+   - Approve/reject event requests
+   - Manage venues
+
+5. Chatbot
+   - Search for events by keywords
+   - Get suggestions for upcoming events
+   - Navigate to event details
+
+## Troubleshooting
+- If the server fails to start, check if the port is already in use
+- If database errors occur, check the database connection settings
+- For any other issues, check the server logs for details
+

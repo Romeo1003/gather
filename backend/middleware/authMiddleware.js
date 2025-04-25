@@ -4,35 +4,31 @@ import User from '../models/User.js';
 // Middleware to verify JWT token
 export const verifyToken = async (req, res, next) => {
   try {
-    // Get token from the Authorization header
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return responseHandler.authError(res, 'Authentication required');
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find user in database
     const user = await User.findOne({ where: { email: decoded.email } });
     
     if (!user) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return responseHandler.authError(res, 'Invalid token');
     }
-    
-    // Add user info to request
+
     req.user = {
+      id: user.id,
       email: user.email,
       role: user.role,
       name: user.name
     };
-    
+
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return res.status(401).json({ message: 'Invalid token' });
+    logger.error('Auth middleware error:', error);
+    return responseHandler.serverError(res, 'Token verification failed', error);
   }
 };
 
@@ -48,4 +44,10 @@ export const isAdmin = async (req, res, next) => {
   }
   
   next();
-}; 
+};
+
+// You can remove this if it's not being used
+export const authMiddleware = (req, res, next) => {
+  // Middleware logic here
+  next();
+};
